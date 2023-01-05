@@ -141,7 +141,6 @@ abstract type AbstractParameters end
 function setup_parameters(parameters::AbstractParameters)
     for field in fieldnames(typeof(parameters))
         parameter = getfield(parameters, field)
-        println((field, typeof(parameter)))
         if typeof(parameter) <: AbstractParameter
             setfield!(parameter, :_name, field)
             setfield!(parameter, :_parent, WeakRef(parameters))
