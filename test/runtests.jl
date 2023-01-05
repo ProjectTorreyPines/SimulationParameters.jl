@@ -10,9 +10,9 @@ Base.@kwdef struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Re
     R0::Entry{T} = Entry(T, "m", "Geometric genter of the plasma. NOTE: This also scales the radial build layers.")
     casename::Entry{String} = Entry(String, "", "Mnemonic name of the case being run")
     init_from::Switch{Symbol} = Switch(Symbol, [
-        :ods => "Load data from ODS saved in .json format (where possible, and fallback on scalars otherwise)",
-        :scalars => "Initialize FUSE run from scalar parameters"
-    ], "", "Initialize run from")
+            :ods => "Load data from ODS saved in .json format (where possible, and fallback on scalars otherwise)",
+            :scalars => "Initialize FUSE run from scalar parameters"
+        ], "", "Initialize run from")
 end
 
 struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
@@ -36,7 +36,7 @@ end
 @testset "BasicTests" begin
     par = ParametersInits()
 
-    println(getfield(par.equilibrium,:casename))
+    println(getfield(par.equilibrium, :casename))
 
     @test typeof(par.equilibrium) <: AbstractParameters
 
@@ -71,7 +71,7 @@ end
 end
 
 @testset "ConcreteTypes" begin
-    ini=ParametersInits()
+    ini = ParametersInits()
     ini.equilibrium.R0 = 5.0
 
     function test_me(ini)

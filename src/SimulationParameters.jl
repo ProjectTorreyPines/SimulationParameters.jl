@@ -141,7 +141,7 @@ abstract type AbstractParameters end
 function setup_parameters(parameters::AbstractParameters)
     for field in fieldnames(typeof(parameters))
         parameter = getfield(parameters, field)
-        println((field,typeof(parameter)))
+        println((field, typeof(parameter)))
         if typeof(parameter) <: AbstractParameter
             setfield!(parameter, :_name, field)
             setfield!(parameter, :_parent, WeakRef(parameters))
@@ -152,7 +152,7 @@ function setup_parameters(parameters::AbstractParameters)
 end
 
 function Base.getproperty(parameters::AbstractParameters, field::Symbol)
-    self_name = Symbol(split(string(typeof(parameters).name.name),"__")[end])
+    self_name = Symbol(split(string(typeof(parameters).name.name), "__")[end])
     if field ∉ fieldnames(typeof(parameters))
         throw(InexistentParameterException([self_name, field]))
     end
@@ -184,7 +184,7 @@ end
 
 function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value::Any)
     if field ∉ fieldnames(typeof(parameters))
-        self_name = Symbol(split(string(typeof(parameters).name.name),"__")[end])
+        self_name = Symbol(split(string(typeof(parameters).name.name), "__")[end])
         throw(InexistentParameterException([self_name, field]))
     else
         x = getfield(parameters, field)
@@ -197,7 +197,7 @@ function value(parameter::T, path::Vector{Symbol})::T where {T<:AbstractParamete
 end
 
 function AbstractTrees.printnode(io::IO, pars::AbstractParameters)
-    printstyled(io, split(string(typeof(pars)),"__")[end]; bold=true)
+    printstyled(io, split(string(typeof(pars)), "__")[end]; bold=true)
 end
 
 struct FUSEnodeRepr
@@ -272,7 +272,7 @@ end
 function path(p::AbstractParameter)
     path = Symbol[]
     if p._parent.value !== missing
-        push!(path, Symbol(split(string(typeof(p._parent.value).name.name),"__")[end]))
+        push!(path, Symbol(split(string(typeof(p._parent.value).name.name), "__")[end]))
     end
     push!(path, p._name)
     return path
