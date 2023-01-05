@@ -54,11 +54,6 @@ function Entry(T::Type, units::String, description::String; default=missing)
     return Entry{T}(missing, WeakRef(missing), units, description, default, default, default, missing, missing)
 end
 
-# function Entry(T::Type, ids::Type, field::Symbol; default=missing)
-#     txt = IMAS.info(ids, field)
-#     return Entry(T, get(txt, "units", ""), get(txt, "documentation", ""); default)
-# end
-
 function value(parameter::Entry{T}, path::Vector{Symbol})::T where {T}
     value = parameter.value
     if value === missing
@@ -115,46 +110,15 @@ function Switch(T::Type, options::Vector{<:Union{Symbol,String}}, units::String,
     return Switch{T}(missing, WeakRef(missing), opts, units, description, default, default, default)
 end
 
-# function Switch(T::Type, options, ids::Type{<:IMAS.IDS}, field::Symbol; default=missing)
-#     location = "$(IMAS.fs2u(ids)).$(field)"
-#     txt = IMAS.info(location)
-#     return Switch(T, options, get(txt, "units", ""), get(txt, "documentation", ""); default)
-# end
-
-function Base.setproperty!(p::Switch, key::Symbol, value)
+function Base.setproperty!(p::Switch, field::Symbol, value)
     if typeof(value) <: Pair
         p.options[value.first].value = value.second
         value = value.first
     end
     if (value !== missing) && !(value in keys(p.options))
-        throw(BadParameterException([key], value, collect(keys(p.options))))
+        throw(BadParameterException([field], value, collect(keys(p.options))))
     end
     return setfield!(p, :value, value)
-end
-
-function parameter_color(p::AbstractParameter)
-    value = p.value
-    if value === missing
-        color = :yellow
-    elseif typeof(value) == typeof(p.default) && value == p.default
-        color = :green
-    elseif typeof(value) == typeof(p.base) && value == p.base
-        color = :blue
-    else
-        color = :red
-    end
-end
-
-function Base.show(io::IO, p::AbstractParameter)
-    color = parameter_color(p)
-    printstyled(io, join(path(p), "."); bold=true, color=color)
-    for item in fieldnames(typeof(p))
-        if startswith(string(item), "_")
-            continue
-        end
-        printstyled(io, "\n- $item: "; bold=true)
-        printstyled(io, "$(getfield(p, item))")
-    end
 end
 
 function value(parameter::Switch{T}, path::Vector{Symbol})::T where {T}
@@ -174,12 +138,18 @@ end
 #======================#
 abstract type AbstractParameters end
 
-abstract type ParametersActor <: AbstractParameters end # container for all parameters of an actor
-abstract type ParametersAllActors <: AbstractParameters end # --> abstract type of ParametersActors, container for all parameters of all actors
-
-abstract type ParametersInit <: AbstractParameters end # container for all parameters of a init
-abstract type ParametersAllInits <: AbstractParameters end # --> abstract type of ParametersInits, container for all parameters of all inits
-
+function setup_parameters(parameters::AbstractParameters)
+    for field in fieldnames(typeof(parameters))
+        parameter = getfield(parameters, field)
+        println((field,typeof(parameter)))
+        if typeof(parameter) <: AbstractParameter
+            setfield!(parameter, :_name, field)
+            setfield!(parameter, :_parent, WeakRef(parameters))
+        elseif typeof(parameter) <: AbstractParameters
+            setup_parameters(parameter)
+        end
+    end
+end
 
 function Base.getproperty(parameters::AbstractParameters, field::Symbol)
     self_name = Symbol(split(string(typeof(parameters).name.name),"__")[end])
@@ -215,7 +185,7 @@ end
 function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value::Any)
     if field ∉ fieldnames(typeof(parameters))
         self_name = Symbol(split(string(typeof(parameters).name.name),"__")[end])
-        throw(FUSE.InexistentParameterException([self_name, field]))
+        throw(InexistentParameterException([self_name, field]))
     else
         x = getfield(parameters, field)
         x.value = value
@@ -284,6 +254,40 @@ function set_new_base!(parameters::AbstractParameters)
         end
     end
     return p
+end
+
+function parameter_color(p::AbstractParameter)
+    value = p.value
+    if value === missing
+        color = :yellow
+    elseif typeof(value) == typeof(p.default) && value == p.default
+        color = :green
+    elseif typeof(value) == typeof(p.base) && value == p.base
+        color = :blue
+    else
+        color = :red
+    end
+end
+
+function path(p::AbstractParameter)
+    path = Symbol[]
+    if p._parent.value !== missing
+        push!(path, Symbol(split(string(typeof(p._parent.value).name.name),"__")[end]))
+    end
+    push!(path, p._name)
+    return path
+end
+
+function Base.show(io::IO, p::AbstractParameter)
+    color = parameter_color(p)
+    printstyled(io, join(path(p), "."); bold=true, color=color)
+    for item in fieldnames(typeof(p))
+        if startswith(string(item), "_")
+            continue
+        end
+        printstyled(io, "\n- $item: "; bold=true)
+        printstyled(io, "$(getfield(p, item))")
+    end
 end
 
 function Base.ismissing(parameters::AbstractParameters, field::Symbol)::Bool
@@ -370,30 +374,31 @@ function par2json(@nospecialize(par::AbstractParameters), filename::String; kw..
 end
 
 function dict2par!(dct::AbstractDict, par::AbstractParameters)
-    for (key, val) in par
-        if key ∈ keys(dct)
+    for field in fieldnames(typeof(par))
+        val = getfield(par, field)
+        if field ∈ keys(dct)
             # this is if dct was par2dict function
-            dkey = key
+            dkey = field
             dvalue = :value
         else
             # this is if dct was generated from json
-            dkey = string(key)
+            dkey = string(field)
             dvalue = "value"
         end
         if typeof(val) <: AbstractParameters
             dict2par!(dct[dkey], val)
         elseif dct[dkey][dvalue] === nothing
-            setproperty!(par, key, missing)
+            setproperty!(par, field, missing)
         elseif typeof(dct[dkey][dvalue]) <: AbstractVector # this could be done more generally
-            setproperty!(par, key, Real[k for k in dct[dkey][dvalue]])
+            setproperty!(par, field, Real[k for k in dct[dkey][dvalue]])
         else
             try
-                setproperty!(par, key, Symbol(dct[dkey][dvalue]))
+                setproperty!(par, field, Symbol(dct[dkey][dvalue]))
             catch e
                 try
-                    setproperty!(par, key, dct[dkey][dvalue])
+                    setproperty!(par, field, dct[dkey][dvalue])
                 catch e
-                    display((key, e))
+                    display((field, e))
                 end
             end
         end
@@ -412,13 +417,16 @@ end
 struct InexistentParameterException <: Exception
     path::Vector{Symbol}
 end
+
 Base.showerror(io::IO, e::InexistentParameterException) = print(io, "$(join(e.path,".")) does not exist")
 
 struct NotsetParameterException <: Exception
     path::Vector{Symbol}
     options::Vector{Any}
 end
+
 NotsetParameterException(path::Vector{Symbol}) = NotsetParameterException(path, [])
+
 function Base.showerror(io::IO, e::NotsetParameterException)
     if length(e.options) > 0
         print(io, "Parameter $(join(e.path,".")) is not set. Valid options are: $(join(map(repr,e.options),", "))")
@@ -432,10 +440,13 @@ struct BadParameterException <: Exception
     value::Any
     options::Vector{Any}
 end
+
 Base.showerror(io::IO, e::BadParameterException) =
     print(io, "Parameter $(join(e.path,".")) = $(repr(e.value)) is not one of the valid options: $(join(map(repr,e.options),", "))")
 
-
-
+export AbstractParameter, AbstractParameters, setup_parameters
+export Entry, Switch
+export par2dict, par2dict!, dict2par!
+export InexistentParameterException, NotsetParameterException, BadParameterException
 
 end # module SimulationParameters
