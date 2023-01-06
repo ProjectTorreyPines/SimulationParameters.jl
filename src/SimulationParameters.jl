@@ -155,15 +155,15 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
     if field ∉ fieldnames(typeof(parameters))
         throw(InexistentParameterException([self_name, field]))
     end
-    x = getfield(parameters, field)
-    if typeof(x) <: AbstractParameters
-        return x
+    parameter = getfield(parameters, field)
+    if typeof(parameter) <: AbstractParameters
+        return parameter
     else
-        if x.value === missing
+        if parameter.value === missing
             throw(NotsetParameterException([self_name, field]))
         else
-            tp = typeof(x).parameters[1]
-            return x.value::tp
+            tp = typeof(parameter).parameters[1]
+            return parameter.value::tp
         end
     end
 end
@@ -173,11 +173,20 @@ Return value of `key` parameter or `default` if parameter is missing
 NOTE: This is useful because accessing a `missing` parameter would raise an error
 """
 function Base.getproperty(parameters::AbstractParameters, field::Symbol, default)
-    value = getfield(parameters, field)
-    if value === missing
-        return default
+    self_name = Symbol(split(string(typeof(parameters).name.name), "__")[end])
+    if field ∉ fieldnames(typeof(parameters))
+        throw(InexistentParameterException([self_name, field]))
+    end
+    parameter = getfield(parameters, field)
+    if typeof(parameter) <: AbstractParameters
+        return parameter
     else
-        return getproperty(parameters, field)
+        if parameter.value === missing
+            return default
+        else
+            tp = typeof(parameter).parameters[1]
+            return parameter.value::tp
+        end
     end
 end
 
@@ -187,7 +196,13 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         throw(InexistentParameterException([self_name, field]))
     else
         x = getfield(parameters, field)
-        x.value = value
+        if typeof(x) <: AbstractParameter
+            x.value = value
+        elseif typeof(x) <: AbstractParameters
+            setfield!(parameters, field, value)
+        else
+            error("should not be here")
+        end
     end
 end
 
@@ -252,7 +267,7 @@ function set_new_base!(parameters::AbstractParameters)
             setfield!(parameter, :base, parameter.value)
         end
     end
-    return p
+    return parameters
 end
 
 function parameter_color(p::AbstractParameter)
@@ -445,7 +460,7 @@ Base.showerror(io::IO, e::BadParameterException) =
 
 export AbstractParameter, AbstractParameters, setup_parameters
 export Entry, Switch
-export par2dict, par2dict!, dict2par!
+export par2dict, par2dict!, dict2par!, set_new_base!
 export InexistentParameterException, NotsetParameterException, BadParameterException
 
 end # module SimulationParameters
