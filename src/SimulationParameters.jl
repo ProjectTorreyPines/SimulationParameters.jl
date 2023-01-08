@@ -1,6 +1,7 @@
 module SimulationParameters
 
 import AbstractTrees
+import JSON
 
 #= ================= =#
 #  AbstractParameter  #
@@ -29,7 +30,6 @@ function AbstractTrees.printnode(io::IO, par::AbstractParameter)
     end
 end
 
-
 #= ===== =#
 #  Entry  #
 #= ===== =#
@@ -52,15 +52,6 @@ Defines a entry parameter
 """
 function Entry(T::Type, units::String, description::String; default=missing)
     return Entry{T}(missing, WeakRef(missing), units, description, default, default, default, missing, missing)
-end
-
-function value(parameter::Entry{T}, path::Vector{Symbol})::T where {T}
-    value = parameter.value
-    if value === missing
-        throw(NotsetParameterException(path))
-    else
-        return value::T
-    end
 end
 
 #= ====== =#
@@ -116,21 +107,9 @@ function Base.setproperty!(p::Switch, field::Symbol, value)
         value = value.first
     end
     if (value !== missing) && !(value in keys(p.options))
-        throw(BadParameterException([field], value, collect(keys(p.options))))
+        throw(BadParameterException([field], value, p.units, collect(keys(p.options))))
     end
     return setfield!(p, :value, value)
-end
-
-function value(parameter::Switch{T}, path::Vector{Symbol})::T where {T}
-    if parameter.value === missing
-        throw(NotsetParameterException(path, collect(keys(parameter.options))))
-    end
-    value = parameter.options[parameter.value].value
-    if value === missing
-        throw(NotsetParameterException(path))
-    else
-        return value::T
-    end
 end
 
 #======================#
@@ -150,17 +129,35 @@ function setup_parameters(parameters::AbstractParameters)
     end
 end
 
+function set_new_base!(parameters::AbstractParameters)
+    for field in fieldnames(typeof(parameters))
+        parameter = getfield(parameters, field)
+        if typeof(parameter) <: AbstractParameters
+            set_new_base!(parameter)
+        else
+            setfield!(parameter, :base, parameter.value)
+        end
+    end
+    return parameters
+end
+
 function Base.getproperty(parameters::AbstractParameters, field::Symbol)
-    self_name = Symbol(split(string(typeof(parameters).name.name), "__")[end])
+    self_name = path(parameters)
     if field ∉ fieldnames(typeof(parameters))
-        throw(InexistentParameterException([self_name, field]))
+        throw(InexistentParameterException([self_name; field]))
     end
     parameter = getfield(parameters, field)
     if typeof(parameter) <: AbstractParameters
         return parameter
     else
         if parameter.value === missing
-            throw(NotsetParameterException([self_name, field]))
+            if typeof(parameter) <: Entry
+                throw(NotsetParameterException([self_name; field], parameter.units))
+            elseif typeof(parameter) <: Switch
+                throw(NotsetParameterException([self_name; field], parameter.units, collect(keys(parameter.options))))
+            else
+                error("Should not be here")
+            end
         else
             tp = typeof(parameter).parameters[1]
             return parameter.value::tp
@@ -173,9 +170,9 @@ Return value of `key` parameter or `default` if parameter is missing
 NOTE: This is useful because accessing a `missing` parameter would raise an error
 """
 function Base.getproperty(parameters::AbstractParameters, field::Symbol, default)
-    self_name = Symbol(split(string(typeof(parameters).name.name), "__")[end])
+    self_name = path(parameters)
     if field ∉ fieldnames(typeof(parameters))
-        throw(InexistentParameterException([self_name, field]))
+        throw(InexistentParameterException([self_name; field]))
     end
     parameter = getfield(parameters, field)
     if typeof(parameter) <: AbstractParameters
@@ -192,8 +189,8 @@ end
 
 function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value::Any)
     if field ∉ fieldnames(typeof(parameters))
-        self_name = Symbol(split(string(typeof(parameters).name.name), "__")[end])
-        throw(InexistentParameterException([self_name, field]))
+        self_name = path(parameters)
+        throw(InexistentParameterException([self_name; field]))
     else
         x = getfield(parameters, field)
         if typeof(x) <: AbstractParameter
@@ -206,102 +203,8 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
     end
 end
 
-function value(parameter::T, path::Vector{Symbol})::T where {T<:AbstractParameters}
-    return parameter::T
-end
-
-function AbstractTrees.printnode(io::IO, pars::AbstractParameters)
-    printstyled(io, split(string(typeof(pars)), "__")[end]; bold=true)
-end
-
-struct FUSEnodeRepr
-    field
-    value
-end
-
-function AbstractTrees.children(pars::AbstractParameters)
-    return [FUSEnodeRepr(field, getfield(pars, field)) for field in sort(collect(fieldnames(typeof(pars))))]
-end
-
-function AbstractTrees.children(node_value::FUSEnodeRepr)
-    value = node_value.value
-    if typeof(value) <: AbstractParameters
-        return [FUSEnodeRepr(field, getfield(value, field)) for field in fieldnames(typeof(value))]
-    else
-        return []
-    end
-end
-
-function AbstractTrees.printnode(io::IO, node_value::FUSEnodeRepr)
-    field = node_value.field
-    par = node_value.value
-    if typeof(par) <: AbstractParameters
-        printstyled(io, field; bold=true)
-    elseif typeof(par) <: AbstractParameter
-        if typeof(par.value) <: AbstractDict
-            printstyled(io, "$field[:]"; bold=true)
-        else
-            color = parameter_color(par)
-            printstyled(io, field)
-            printstyled(io, " ➡ ")
-            printstyled(io, "$(repr(par.value))"; color=color)
-            if length(replace(par.units, "-" => "")) > 0 && par.value !== missing
-                printstyled(io, " [$(par.units)]"; color=color)
-            end
-        end
-    else
-        error(field)
-    end
-end
-
-function Base.show(io::IO, ::MIME"text/plain", pars::AbstractParameters, depth::Int=0)
-    return AbstractTrees.print_tree(io, pars)
-end
-
-function set_new_base!(parameters::AbstractParameters)
-    for field in fieldnames(typeof(parameters))
-        parameter = getfield(parameters, field)
-        if typeof(parameter) <: AbstractParameters
-            set_new_base!(parameter)
-        else
-            setfield!(parameter, :base, parameter.value)
-        end
-    end
-    return parameters
-end
-
-function parameter_color(p::AbstractParameter)
-    value = p.value
-    if value === missing
-        color = :yellow
-    elseif typeof(value) == typeof(p.default) && value == p.default
-        color = :green
-    elseif typeof(value) == typeof(p.base) && value == p.base
-        color = :blue
-    else
-        color = :red
-    end
-end
-
-function path(p::AbstractParameter)
-    path = Symbol[]
-    if p._parent.value !== missing
-        push!(path, Symbol(split(string(typeof(p._parent.value).name.name), "__")[end]))
-    end
-    push!(path, p._name)
-    return path
-end
-
-function Base.show(io::IO, p::AbstractParameter)
-    color = parameter_color(p)
-    printstyled(io, join(path(p), "."); bold=true, color=color)
-    for item in fieldnames(typeof(p))
-        if startswith(string(item), "_")
-            continue
-        end
-        printstyled(io, "\n- $item: "; bold=true)
-        printstyled(io, "$(getfield(p, item))")
-    end
+function path(parameters::AbstractParameters)::Vector{Symbol}
+    return Symbol[Symbol(k) for k in split(string(typeof(parameters).name.name), "__")[2:end]]
 end
 
 function Base.ismissing(parameters::AbstractParameters, field::Symbol)::Bool
@@ -321,35 +224,6 @@ function (par::AbstractParameters)(kw...)
         end
     end
     return par
-end
-
-"""
-    diff(p1::AbstractParameters, p2::AbstractParameters)
-
-Look for differences between two `ini` or `act` sets of parameters
-"""
-function Base.diff(p1::AbstractParameters, p2::AbstractParameters)
-    k1 = fieldnames(typeof(p1))
-    k2 = fieldnames(typeof(p2))
-    commonkeys = intersect(Set(k1), Set(k2))
-    if length(commonkeys) != length(k1)
-        error("p1 has more keys")
-    elseif length(commonkeys) != length(k2)
-        error("p2 has more keys")
-    end
-    for key in commonkeys
-        v1 = getfield(p1, key)
-        v2 = getfield(p2, key)
-        if typeof(v1) !== typeof(v2)
-            error("$key is of different type")
-        elseif typeof(v1) <: AbstractParameters
-            diff(v1, v2)
-        elseif typeof(v1.value) === typeof(v2.value) === Missing
-            continue
-        elseif v1.value != v2.value
-            error("$key had different value:\n$v1\n\n$v2")
-        end
-    end
 end
 
 """
@@ -425,6 +299,117 @@ function json2par(filename::AbstractString, par_data::AbstractParameters)
     return dict2par!(json_data, par_data)
 end
 
+"""
+    diff(p1::AbstractParameters, p2::AbstractParameters)
+
+Look for differences between two `ini` or `act` sets of parameters
+"""
+function Base.diff(p1::AbstractParameters, p2::AbstractParameters)
+    k1 = fieldnames(typeof(p1))
+    k2 = fieldnames(typeof(p2))
+    commonkeys = intersect(Set(k1), Set(k2))
+    if length(commonkeys) != length(k1)
+        error("p1 has more keys")
+    elseif length(commonkeys) != length(k2)
+        error("p2 has more keys")
+    end
+    for key in commonkeys
+        v1 = getfield(p1, key)
+        v2 = getfield(p2, key)
+        if typeof(v1) !== typeof(v2)
+            error("$key is of different type")
+        elseif typeof(v1) <: AbstractParameters
+            diff(v1, v2)
+        elseif typeof(v1.value) === typeof(v2.value) === Missing
+            continue
+        elseif v1.value != v2.value
+            error("$key had different value:\n$v1\n\n$v2")
+        end
+    end
+end
+
+struct FUSEnodeRepr
+    field
+    value
+end
+
+function AbstractTrees.printnode(io::IO, pars::AbstractParameters)
+    printstyled(io, split(string(typeof(pars)), "__")[end]; bold=true)
+end
+
+function AbstractTrees.children(pars::AbstractParameters)::Vector{FUSEnodeRepr}
+    return [FUSEnodeRepr(field, getfield(pars, field)) for field in sort(collect(fieldnames(typeof(pars))))]
+end
+
+function AbstractTrees.children(node_value::FUSEnodeRepr)
+    value = node_value.value
+    if typeof(value) <: AbstractParameters
+        return [FUSEnodeRepr(field, getfield(value, field)) for field in fieldnames(typeof(value))]
+    else
+        return []
+    end
+end
+
+function AbstractTrees.printnode(io::IO, node_value::FUSEnodeRepr)
+    field = node_value.field
+    par = node_value.value
+    if typeof(par) <: AbstractParameters
+        printstyled(io, field; bold=true)
+    elseif typeof(par) <: AbstractParameter
+        if typeof(par.value) <: AbstractDict
+            printstyled(io, "$field[:]"; bold=true)
+        else
+            color = parameter_color(par)
+            printstyled(io, field)
+            printstyled(io, " ➡ ")
+            printstyled(io, "$(repr(par.value))"; color=color)
+            if length(replace(par.units, "-" => "")) > 0 && par.value !== missing
+                printstyled(io, " [$(par.units)]"; color=color)
+            end
+        end
+    else
+        error(field)
+    end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", pars::AbstractParameters, depth::Int=0)
+    return AbstractTrees.print_tree(io, pars)
+end
+
+function parameter_color(p::AbstractParameter)::Symbol
+    value = p.value
+    if value === missing
+        color = :yellow
+    elseif typeof(value) == typeof(p.default) && value == p.default
+        color = :green
+    elseif typeof(value) == typeof(p.base) && value == p.base
+        color = :blue
+    else
+        color = :red
+    end
+end
+
+function path(p::AbstractParameter)::Vector{Symbol}
+    pp = Symbol[]
+    if p._parent.value !== nothing
+        append!(pp, path(p._parent.value))
+    end
+    push!(pp, p._name)
+    return pp
+end
+
+function Base.show(io::IO, p::AbstractParameter)
+    color = parameter_color(p)
+    printstyled(io, join(path(p), "."); bold=true, color=color)
+    for item in fieldnames(typeof(p))
+        if startswith(string(item), "_")
+            continue
+        end
+        printstyled(io, "\n- $item: "; bold=true)
+        printstyled(io, "$(getfield(p, item))")
+    end
+end
+
 #= ================= =#
 #  Parameters errors  #
 #= ================= =#
@@ -436,27 +421,38 @@ Base.showerror(io::IO, e::InexistentParameterException) = print(io, "$(join(e.pa
 
 struct NotsetParameterException <: Exception
     path::Vector{Symbol}
+    units::String
     options::Vector{Any}
 end
 
-NotsetParameterException(path::Vector{Symbol}) = NotsetParameterException(path, [])
+NotsetParameterException(path::Vector{Symbol}, units::String) = NotsetParameterException(path, units, [])
 
 function Base.showerror(io::IO, e::NotsetParameterException)
+    units = ""
+    if length(replace(e.units, "-" => "")) > 0
+        units = " [$(e.units)]"
+    end
     if length(e.options) > 0
-        print(io, "Parameter $(join(e.path,".")) is not set. Valid options are: $(join(map(repr,e.options),", "))")
+        print(io, "Parameter $(join(e.path,"."))$units is not set. Valid options are $(join(map(repr,e.options),", "))")
     else
-        print(io, "Parameter $(join(e.path,".")) is not set")
+        print(io, "Parameter $(join(e.path,"."))$units is not set")
     end
 end
 
 struct BadParameterException <: Exception
     path::Vector{Symbol}
     value::Any
+    units::String
     options::Vector{Any}
 end
 
-Base.showerror(io::IO, e::BadParameterException) =
-    print(io, "Parameter $(join(e.path,".")) = $(repr(e.value)) is not one of the valid options: $(join(map(repr,e.options),", "))")
+function Base.showerror(io::IO, e::BadParameterException)
+    units = ""
+    if length(replace(e.units, "-" => "")) > 0
+        units = " [$(e.units)]"
+    end
+    print(io, "Parameter $(join(e.path,".")) = $(repr(e.value))$units is not one of the valid options $(join(map(repr,e.options),", "))")
+end
 
 export AbstractParameter, AbstractParameters, setup_parameters
 export Entry, Switch

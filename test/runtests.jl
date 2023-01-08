@@ -12,7 +12,7 @@ Base.@kwdef struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Re
     init_from::Switch{Symbol} = Switch(Symbol, [
             :ods => "Load data from ODS saved in .json format (where possible, and fallback on scalars otherwise)",
             :scalars => "Initialize FUSE run from scalar parameters"
-        ], "", "Initialize run from")
+        ], "myunits", "Initialize run from")
 end
 
 struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
@@ -34,39 +34,35 @@ end
 #=============#
 
 @testset "BasicTests" begin
-    par = ParametersInits()
-
-    println(getfield(par.equilibrium, :casename))
-
-    @test typeof(par.equilibrium) <: AbstractParameters
-
-    @test_throws NotsetParameterException par.equilibrium.R0
-
-    par.equilibrium.R0 = 1.0
-    @test par.equilibrium.R0 == 1.0
-
     ini = ParametersInits()
-    ini1 = ParametersInits()
 
-    @test_throws Exception par.equilibrium.R0 = "a string"
+    println(getfield(ini.equilibrium, :casename))
 
-    par.equilibrium.R0 = missing
-    @test_throws NotsetParameterException par.equilibrium.R0
+    @test typeof(ini.equilibrium) <: AbstractParameters
 
-    @test_throws InexistentParameterException par.equilibrium.does_not_exist = 1.0
+    @test_throws NotsetParameterException ini.equilibrium.R0
 
-    @test fieldnames(typeof(par.equilibrium)) == fieldnames(typeof(FUSEparameters__equilibrium{Float64}()))
+    ini.equilibrium.R0 = 1.0
+    @test ini.equilibrium.R0 == 1.0
 
-    @test typeof(ini) <: AbstractParameters
+    @test_throws Exception ini.equilibrium.R0 = "a string"
+
+    ini.equilibrium.R0 = missing
+    @test_throws NotsetParameterException ini.equilibrium.R0
+
+    @test_throws InexistentParameterException ini.equilibrium.does_not_exist = 1.0
+
+    @test fieldnames(typeof(ini.equilibrium)) == fieldnames(typeof(FUSEparameters__equilibrium{Float64}()))
 
     ini.equilibrium.R0 = 5.3
     @test ini.equilibrium.R0 == 5.3
 
     @test (ini.equilibrium.init_from = :ods) == :ods
-
     @test_throws BadParameterException ini.equilibrium.init_from = :odsa
 
-    # save load
+    println(ini)
+    println(ini.equilibrium.R0)
+
     dict2par!(par2dict(ini), ParametersInits())
 end
 
