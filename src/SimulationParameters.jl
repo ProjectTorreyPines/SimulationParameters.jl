@@ -112,9 +112,9 @@ function Base.setproperty!(p::Switch, field::Symbol, value)
     return setfield!(p, :value, value)
 end
 
-#======================#
-#= AbstractParameters =#
-#======================#
+#= ================== =#
+#  AbstractParameters  #
+#= ================== =#
 abstract type AbstractParameters end
 
 function setup_parameters(parameters::AbstractParameters)
