@@ -219,7 +219,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
             end
         elseif typeof(parameter) <: AbstractParameter
             parameter.value = value
-        elseif typeof(x) <: AbstractParameters
+        elseif typeof(parameter) <: AbstractParameters
             setfield!(parameters, field, value)
         else
             error("should not be here")
