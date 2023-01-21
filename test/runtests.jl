@@ -66,6 +66,42 @@ end
     dict2par!(par2dict(ini), ParametersInits())
 end
 
+@testset "OptTests" begin
+    ini = ParametersInits()
+    ini.equilibrium.R0 = 1.5 ↔ [1.2, 2.5]
+    @test ini.equilibrium.R0 == 1.5
+    ini.equilibrium.R0 = 1.2 ↔ [1.2, 2.5]
+    @test ini.equilibrium.R0 == 1.2
+    ini.equilibrium.R0 = 2.5 ↔ [1.2, 2.5]
+    @test ini.equilibrium.R0 == 2.5
+    @test_throws ErrorException ini.equilibrium.R0 = 1.0 ↔ [1.2, 2.5]
+    @test_throws ErrorException ini.equilibrium.R0 = 3.0 ↔ [1.2, 2.5]
+
+    ini = ParametersInits{Int}()
+    ini.equilibrium.R0 = 2 ↔ [1, 3]
+    @test ini.equilibrium.R0 == 2
+    ini.equilibrium.R0 = 2.0 ↔ [1, 3]
+    @test ini.equilibrium.R0 == 2
+    ini.equilibrium.R0 = 1 ↔ [1, 3]
+    @test ini.equilibrium.R0 == 1
+    ini.equilibrium.R0 = 3 ↔ [1, 3]
+    @test ini.equilibrium.R0 == 3
+    @test_throws ErrorException ini.equilibrium.R0 = 0 ↔ [1, 3]
+    @test_throws ErrorException ini.equilibrium.R0 = 4 ↔ [1, 3]
+
+    ini = ParametersInits{Bool}()
+    ini.equilibrium.R0 = 0 ↔ [0, 1]
+    @test ini.equilibrium.R0 == 0
+    ini.equilibrium.R0 = 0.5 ↔ [0, 1]
+    @test ini.equilibrium.R0 == 0
+    ini.equilibrium.R0 = 0.0 ↔ [0, 1]
+    @test ini.equilibrium.R0 == 0
+    ini.equilibrium.R0 = 1.0 ↔ [0, 1]
+    @test ini.equilibrium.R0 == 1
+    @test_throws ErrorException ini.equilibrium.R0 = -1 ↔ [0, 1]
+    @test_throws ErrorException ini.equilibrium.R0 = 2 ↔ [0, 1]
+end
+
 @testset "ConcreteTypes" begin
     ini = ParametersInits()
     ini.equilibrium.R0 = 5.0

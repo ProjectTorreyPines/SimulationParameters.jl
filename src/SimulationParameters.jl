@@ -192,9 +192,33 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         self_name = path(parameters)
         throw(InexistentParameterException([self_name; field]))
     else
-        x = getfield(parameters, field)
-        if typeof(x) <: AbstractParameter
-            x.value = value
+        parameter = getfield(parameters, field)
+        # handle OptParameter in Entry
+        if typeof(parameter) <: Entry
+            tp = typeof(parameter).parameters[1]
+            if typeof(value) <: OptParameter
+                if tp <: Union{Integer,Bool}
+                    parameter.lower = value.lower - 0.5
+                    parameter.upper = value.upper + 0.5
+                else
+                    parameter.lower = value.lower
+                    parameter.upper = value.upper
+                end
+                value = value.nominal
+            end
+            if ~ (ismissing(parameter.lower) || ismissing(parameter.lower))
+                if tp <: Integer
+                    parameter.value = Int(round(value))
+                elseif tp <: Bool
+                    parameter.value = Bool(round(value))
+                else
+                    parameter.value = value
+                end
+            else
+                parameter.value = value
+            end
+        elseif typeof(parameter) <: AbstractParameter
+            parameter.value = value
         elseif typeof(x) <: AbstractParameters
             setfield!(parameters, field, value)
         else
@@ -410,6 +434,48 @@ function Base.show(io::IO, p::AbstractParameter)
     end
 end
 
+#= ====================== =#
+#  Optimization parameter  #
+#= ====================== =#
+struct OptParameter
+    nominal::Real
+    lower::Real
+    upper::Real
+    function OptParameter(nominal, lower, upper)
+        if nominal<lower
+            error("Optimization parameter: nominal value < lower bound")
+        elseif nominal>upper
+            error("Optimization parameter: nominal value > lower bound")
+        end
+        return new(nominal, lower, upper)
+    end
+end
+
+"""
+    ↔(x::Real, r::AbstractVector)
+
+"leftrightarrow" unicode constructor for OptParameter
+"""
+function ↔(x::Real, r::AbstractVector)
+    #@assert typeof(x) == typeof(r[1]) == typeof(r[end]) "type of optimization range does not match the nominal value"
+    return OptParameter(x, r[1], r[end])
+end
+
+function opt_parameters(p::AbstractParameters, opt_vector=AbstractParameter[])
+    _parameters = getfield(p, :_parameters)
+    for k in keys(_parameters)
+        parameter = _parameters[k]
+        if typeof(parameter) <: AbstractParameters
+            opt_parameters(parameter, opt_vector)
+        elseif typeof(parameter) <: Entry
+            if parameter.lower !== missing
+                push!(opt_vector, parameter)
+            end
+        end
+    end
+    return opt_vector
+end
+
 #= ================= =#
 #  Parameters errors  #
 #= ================= =#
@@ -457,6 +523,7 @@ end
 export AbstractParameter, AbstractParameters, setup_parameters
 export Entry, Switch
 export par2dict, par2dict!, dict2par!, set_new_base!
+export OptParameter, ↔
 export InexistentParameterException, NotsetParameterException, BadParameterException
 
 end # module SimulationParameters
