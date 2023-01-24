@@ -100,6 +100,8 @@ end
     @test ini.equilibrium.R0 == 1
     @test_throws ErrorException ini.equilibrium.R0 = -1 ↔ [0, 1]
     @test_throws ErrorException ini.equilibrium.R0 = 2 ↔ [0, 1]
+
+    @test opt_parameters(ini) == AbstractParameter[getfield(ini.equilibrium, :R0)]
 end
 
 @testset "ConcreteTypes" begin

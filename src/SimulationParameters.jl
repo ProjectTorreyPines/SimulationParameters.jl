@@ -461,10 +461,9 @@ function ↔(x::Real, r::AbstractVector)
     return OptParameter(x, r[1], r[end])
 end
 
-function opt_parameters(p::AbstractParameters, opt_vector=AbstractParameter[])
-    _parameters = getfield(p, :_parameters)
-    for k in keys(_parameters)
-        parameter = _parameters[k]
+function opt_parameters(parameters::AbstractParameters, opt_vector=AbstractParameter[])
+    for field in fieldnames(typeof(parameters))
+        parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
             opt_parameters(parameter, opt_vector)
         elseif typeof(parameter) <: Entry
@@ -523,7 +522,7 @@ end
 export AbstractParameter, AbstractParameters, setup_parameters
 export Entry, Switch
 export par2dict, par2dict!, dict2par!, set_new_base!
-export OptParameter, ↔
+export OptParameter, ↔, opt_parameters
 export InexistentParameterException, NotsetParameterException, BadParameterException
 
 end # module SimulationParameters
