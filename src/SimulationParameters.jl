@@ -499,7 +499,6 @@ function parameters_from_opt!(parameters::AbstractParameters, opt_vector::Abstra
             if parameter.lower !== missing
                 setproperty!(parameter, :value, opt_vector[k])
                 k += 1
-                @show field, parameter.value
             end
         end
     end
