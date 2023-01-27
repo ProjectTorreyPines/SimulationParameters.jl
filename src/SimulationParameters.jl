@@ -206,7 +206,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
                 end
                 value = value.nominal
             end
-            if ~ (ismissing(parameter.lower) || ismissing(parameter.lower))
+            if ~(ismissing(parameter.lower) || ismissing(parameter.lower))
                 if tp <: Integer
                     parameter.value = Int(round(value))
                 elseif tp <: Bool
@@ -442,9 +442,9 @@ struct OptParameter
     lower::Real
     upper::Real
     function OptParameter(nominal, lower, upper)
-        if nominal<lower
+        if nominal < lower
             error("Optimization parameter: nominal value < lower bound")
-        elseif nominal>upper
+        elseif nominal > upper
             error("Optimization parameter: nominal value > lower bound")
         end
         return new(nominal, lower, upper)
@@ -461,6 +461,11 @@ function ↔(x::Real, r::AbstractVector)
     return OptParameter(x, r[1], r[end])
 end
 
+"""
+    opt_parameters(parameters::AbstractParameters, opt_vector=AbstractParameter[])
+
+Create and return the opt_vector from parameters
+"""
 function opt_parameters(parameters::AbstractParameters, opt_vector=AbstractParameter[])
     for field in fieldnames(typeof(parameters))
         parameter = getfield(parameters, field)
@@ -473,6 +478,32 @@ function opt_parameters(parameters::AbstractParameters, opt_vector=AbstractParam
         end
     end
     return opt_vector
+end
+
+"""
+    parameters_from_opt!(parameters::AbstractParameters, opt_vector::AbstractVector)
+
+Set parameters from the opt_vector in place
+"""
+function parameters_from_opt!(parameters::AbstractParameters, opt_vector::AbstractVector)
+    parameters_from_opt!(parameters, opt_vector,1)
+    return parameters
+end
+
+function parameters_from_opt!(parameters::AbstractParameters, opt_vector::AbstractVector, k::Int)
+    for field in fieldnames(typeof(parameters))
+        parameter = getfield(parameters, field)
+        if typeof(parameter) <: AbstractParameters
+            _, k = parameters_from_opt!(parameter, opt_vector,k)
+        elseif typeof(parameter) <: Entry
+            if parameter.lower !== missing
+                setproperty!(parameter, :value, opt_vector[k])
+                k += 1
+                @show field, parameter.value
+            end
+        end
+    end
+    return parameters, k 
 end
 
 #= ================= =#
@@ -522,7 +553,7 @@ end
 export AbstractParameter, AbstractParameters, setup_parameters
 export Entry, Switch
 export par2dict, par2dict!, dict2par!, set_new_base!
-export OptParameter, ↔, opt_parameters
+export OptParameter, ↔, opt_parameters, parameters_from_opt!
 export InexistentParameterException, NotsetParameterException, BadParameterException
 
 end # module SimulationParameters
