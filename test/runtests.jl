@@ -5,7 +5,9 @@ import AbstractTrees
 abstract type ParametersInit <: AbstractParameters end # container for all parameters of a init
 abstract type ParametersAllInits <: AbstractParameters end # --> abstract type of ParametersInits, container for all parameters of all inits
 
-Base.@kwdef struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Real}
+Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Real}
+    _parent::WeakRef = WeakRef(nothing)
+    _name::Symbol = :equilibrium
     R0::Entry{T} = Entry(T, "m", "Geometric genter of the plasma. NOTE: This also scales the radial build layers.")
     casename::Entry{String} = Entry(String, "", "Mnemonic name of the case being run")
     init_from::Switch{Symbol} = Switch(Symbol, [
@@ -14,12 +16,16 @@ Base.@kwdef struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Re
         ], "myunits", "Initialize run from")
 end
 
-struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
+mutable struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
+    _parent::WeakRef
+    _name::Symbol
     equilibrium::FUSEparameters__equilibrium{T}
 end
 
 function ParametersInits{T}() where {T<:Real}
     ini = ParametersInits{T}(
+        WeakRef(nothing),
+        :ini,
         FUSEparameters__equilibrium{T}()
     )
     setup_parameters(ini)
@@ -34,6 +40,8 @@ end
 
 @testset "BasicTests" begin
     ini = ParametersInits()
+
+    @test SimulationParameters.path(ini.equilibrium) == Symbol[:ini, :equilibrium]
 
     println(getfield(ini.equilibrium, :casename))
 
@@ -101,6 +109,13 @@ end
     @test_throws ErrorException ini.equilibrium.R0 = 2 ↔ [0, 1]
 
     @test opt_parameters(ini) == AbstractParameter[getfield(ini.equilibrium, :R0)]
+end
+
+@testset "GC" begin
+    ini = ParametersInits()
+    @test parent(ini.equilibrium) === ini
+    GC.gc()
+    @test parent(ini.equilibrium) === ini
 end
 
 @testset "ConcreteTypes" begin

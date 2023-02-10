@@ -51,7 +51,7 @@ end
 Defines a entry parameter
 """
 function Entry(T::Type, units::String, description::String; default=missing)
-    return Entry{T}(missing, WeakRef(missing), units, description, default, default, default, missing, missing)
+    return Entry{T}(missing, WeakRef(nothing), units, description, default, default, default, missing, missing)
 end
 
 #= ====== =#
@@ -82,7 +82,7 @@ function Switch(T::Type, options::Dict{Any,SwitchOption}, units::String, descrip
     if !in(default, keys(options))
         error("$(repr(default)) is not a valid option: $(collect(keys(options)))")
     end
-    return Switch{T}(missing, WeakRef(missing), options, units, description, default, default, default)
+    return Switch{T}(missing, WeakRef(nothing), options, units, description, default, default, default)
 end
 
 function Switch(T::Type, options::Vector{<:Pair}, units::String, description::String; default=missing)
@@ -90,7 +90,7 @@ function Switch(T::Type, options::Vector{<:Pair}, units::String, description::St
     for (key, desc) in options
         opts[key] = SwitchOption(key, desc)
     end
-    return Switch{T}(missing, WeakRef(missing), opts, units, description, default, default, default)
+    return Switch{T}(missing, WeakRef(nothing), opts, units, description, default, default, default)
 end
 
 function Switch(T::Type, options::Vector{<:Union{Symbol,String}}, units::String, description::String; default=missing)
@@ -98,7 +98,7 @@ function Switch(T::Type, options::Vector{<:Union{Symbol,String}}, units::String,
     for key in options
         opts[key] = SwitchOption(key, "$key")
     end
-    return Switch{T}(missing, WeakRef(missing), opts, units, description, default, default, default)
+    return Switch{T}(missing, WeakRef(nothing), opts, units, description, default, default, default)
 end
 
 function Base.setproperty!(p::Switch, field::Symbol, value)
@@ -118,19 +118,20 @@ end
 abstract type AbstractParameters end
 
 function setup_parameters(parameters::AbstractParameters)
-    for field in fieldnames(typeof(parameters))
+    for field in keys(parameters)
         parameter = getfield(parameters, field)
-        if typeof(parameter) <: AbstractParameter
-            setfield!(parameter, :_name, field)
+        if typeof(parameter) <: Union{AbstractParameter,AbstractParameters}
             setfield!(parameter, :_parent, WeakRef(parameters))
-        elseif typeof(parameter) <: AbstractParameters
+            setfield!(parameter, :_name, field)
+        end
+        if typeof(parameter) <: AbstractParameters
             setup_parameters(parameter)
         end
     end
 end
 
 function set_new_base!(parameters::AbstractParameters)
-    for field in fieldnames(typeof(parameters))
+    for field in keys(parameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
             set_new_base!(parameter)
@@ -142,8 +143,11 @@ function set_new_base!(parameters::AbstractParameters)
 end
 
 function Base.getproperty(parameters::AbstractParameters, field::Symbol)
+    if startswith(string(field), "_")
+        error("use getfield for :$field")
+    end
     self_name = path(parameters)
-    if field ∉ fieldnames(typeof(parameters))
+    if field ∉ keys(parameters)
         throw(InexistentParameterException([self_name; field]))
     end
     parameter = getfield(parameters, field)
@@ -171,7 +175,7 @@ NOTE: This is useful because accessing a `missing` parameter would raise an erro
 """
 function Base.getproperty(parameters::AbstractParameters, field::Symbol, default)
     self_name = path(parameters)
-    if field ∉ fieldnames(typeof(parameters))
+    if field ∉ keys(parameters)
         throw(InexistentParameterException([self_name; field]))
     end
     parameter = getfield(parameters, field)
@@ -188,7 +192,10 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol, default
 end
 
 function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value::Any)
-    if field ∉ fieldnames(typeof(parameters))
+    if startswith(string(field), "_")
+        error("use setfield! for :$field")
+    end
+    if field ∉ keys(parameters)
         self_name = path(parameters)
         throw(InexistentParameterException([self_name; field]))
     else
@@ -219,16 +226,36 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
             end
         elseif typeof(parameter) <: AbstractParameter
             parameter.value = value
+            #setfield!(parameter, :_parent, WeakRef(parameters))
+            #setfield!(parameter, :_name, field)
         elseif typeof(parameter) <: AbstractParameters
             setfield!(parameters, field, value)
+            #setfield!(parameter, :_parent, WeakRef(parameters))
+            #setfield!(parameter, :_name, field)
         else
             error("should not be here")
         end
     end
 end
 
-function path(parameters::AbstractParameters)::Vector{Symbol}
-    return Symbol[Symbol(k) for k in split(string(typeof(parameters).name.name), "__")[2:end]]
+function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})
+    return (field for field in fieldnames(typeof(parameters)) if field ∉ [:_parent, :_name])
+end
+
+function Base.parent(parameters::Union{AbstractParameter,AbstractParameters})
+    return getfield(parameters, :_parent).value
+end
+
+function name(parameters::Union{AbstractParameter,AbstractParameters})
+    return getfield(parameters, :_name)
+end
+
+function path(parameters::Union{AbstractParameter,AbstractParameters})::Vector{Symbol}
+    if parent(parameters) === nothing
+        return Symbol[name(parameters)]
+    else
+        return Symbol[path(parent(parameters)); name(parameters)]
+    end
 end
 
 function Base.ismissing(parameters::AbstractParameters, field::Symbol)::Bool
@@ -241,13 +268,14 @@ end
 This functor is used to override the parameters at function call
 """
 function (par::AbstractParameters)(kw...)
-    par = deepcopy(par)
+    par_copy = deepcopy(par)
     if !isempty(kw)
         for (key, value) in kw
-            setproperty!(par, key, value)
+            setproperty!(par_copy, key, value)
         end
     end
-    return par
+    setfield!(par_copy, :_parent, getfield(par, :_parent))
+    return par_copy
 end
 
 """
@@ -261,17 +289,14 @@ function par2dict(par::AbstractParameters)
 end
 
 function par2dict!(par::AbstractParameters, ret::AbstractDict)
-    for item in fieldnames(typeof(par))
+    for item in keys(par)
         value = getfield(par, item)
         if typeof(value) <: AbstractParameters
             ret[item] = Dict()
             par2dict!(value, ret[item])
         elseif typeof(value) <: AbstractParameter
             ret[item] = Dict()
-            for field in fieldnames(typeof(value))
-                if startswith(string(field), "_")
-                    continue
-                end
+            for field in keys(value)
                 ret[item][field] = getfield(value, field)
             end
         end
@@ -286,7 +311,7 @@ function par2json(@nospecialize(par::AbstractParameters), filename::String; kw..
 end
 
 function dict2par!(dct::AbstractDict, par::AbstractParameters)
-    for field in fieldnames(typeof(par))
+    for field in keys(par)
         val = getfield(par, field)
         if field ∈ keys(dct)
             # this is if dct was par2dict function
@@ -329,8 +354,8 @@ end
 Look for differences between two `ini` or `act` sets of parameters
 """
 function Base.diff(p1::AbstractParameters, p2::AbstractParameters)
-    k1 = fieldnames(typeof(p1))
-    k2 = fieldnames(typeof(p2))
+    k1 = keys(p1)
+    k2 = keys(p2)
     commonkeys = intersect(Set(k1), Set(k2))
     if length(commonkeys) != length(k1)
         error("p1 has more keys")
@@ -362,13 +387,13 @@ function AbstractTrees.printnode(io::IO, pars::AbstractParameters)
 end
 
 function AbstractTrees.children(pars::AbstractParameters)::Vector{FUSEnodeRepr}
-    return [FUSEnodeRepr(field, getfield(pars, field)) for field in sort(collect(fieldnames(typeof(pars))))]
+    return [FUSEnodeRepr(field, getfield(pars, field)) for field in sort(collect(keys(pars)))]
 end
 
 function AbstractTrees.children(node_value::FUSEnodeRepr)
     value = node_value.value
     if typeof(value) <: AbstractParameters
-        return [FUSEnodeRepr(field, getfield(value, field)) for field in fieldnames(typeof(value))]
+        return (FUSEnodeRepr(field, getfield(value, field)) for field in keys(value))
     else
         return []
     end
@@ -411,15 +436,6 @@ function parameter_color(p::AbstractParameter)::Symbol
     else
         color = :red
     end
-end
-
-function path(p::AbstractParameter)::Vector{Symbol}
-    pp = Symbol[]
-    if p._parent.value !== nothing
-        append!(pp, path(p._parent.value))
-    end
-    push!(pp, p._name)
-    return pp
 end
 
 function Base.show(io::IO, p::AbstractParameter)
@@ -467,7 +483,7 @@ end
 Create and return the opt_vector from parameters
 """
 function opt_parameters(parameters::AbstractParameters, opt_vector=AbstractParameter[])
-    for field in fieldnames(typeof(parameters))
+    for field in keys(parameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
             opt_parameters(parameter, opt_vector)
@@ -486,15 +502,15 @@ end
 Set parameters from the opt_vector in place
 """
 function parameters_from_opt!(parameters::AbstractParameters, opt_vector::AbstractVector)
-    parameters_from_opt!(parameters, opt_vector,1)
+    parameters_from_opt!(parameters, opt_vector, 1)
     return parameters
 end
 
 function parameters_from_opt!(parameters::AbstractParameters, opt_vector::AbstractVector, k::Int)
-    for field in fieldnames(typeof(parameters))
+    for field in keys(parameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
-            _, k = parameters_from_opt!(parameter, opt_vector,k)
+            _, k = parameters_from_opt!(parameter, opt_vector, k)
         elseif typeof(parameter) <: Entry
             if parameter.lower !== missing
                 setproperty!(parameter, :value, opt_vector[k])
@@ -502,7 +518,7 @@ function parameters_from_opt!(parameters::AbstractParameters, opt_vector::Abstra
             end
         end
     end
-    return parameters, k 
+    return parameters, k
 end
 
 #= ================= =#
