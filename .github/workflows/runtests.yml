@@ -30,5 +30,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
           show-versioninfo: true
+      - run: |
+          julia -e '
+            using Pkg
+            Pkg.activate(".")
+            Pkg.add("Test")
+            '
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
