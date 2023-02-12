@@ -21,3 +21,10 @@ function AbstractTrees.printnode(io::IO, par::AbstractParameter)
         end
     end
 end
+
+function units_check(units::AbstractString, description::AbstractString)
+    if isempty(units)
+        @error "Units cannot be an empty string. For unitless parameters use `-`. DESCRIPTION: $description"
+    end
+    return units
+end

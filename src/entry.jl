@@ -16,5 +16,5 @@ end
 Defines a entry parameter
 """
 function Entry(T::Type, units::String, description::String; default=missing)
-    return Entry{T}(missing, WeakRef(nothing), units, description, default, default, default, missing, missing)
+    return Entry{T}(missing, WeakRef(nothing), units_check(units, description), description, default, default, default, missing, missing)
 end
