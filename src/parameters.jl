@@ -29,9 +29,8 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
     if startswith(string(field), "_")
         error("use getfield for :$field")
     end
-    self_name = path(parameters)
     if field ∉ keys(parameters)
-        throw(InexistentParameterException([self_name; field]))
+        throw(InexistentParameterException([path(parameters); field]))
     end
     parameter = getfield(parameters, field)
     if typeof(parameter) <: AbstractParameters
@@ -39,9 +38,9 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
     else
         if parameter.value === missing
             if typeof(parameter) <: Entry
-                throw(NotsetParameterException([self_name; field], parameter.units))
+                throw(NotsetParameterException([path(parameters); field], parameter.units))
             elseif typeof(parameter) <: Switch
-                throw(NotsetParameterException([self_name; field], parameter.units, collect(keys(parameter.options))))
+                throw(NotsetParameterException([path(parameters); field], parameter.units, collect(keys(parameter.options))))
             else
                 error("Should not be here")
             end
@@ -57,9 +56,8 @@ Return value of `key` parameter or `default` if parameter is missing
 NOTE: This is useful because accessing a `missing` parameter would raise an error
 """
 function Base.getproperty(parameters::AbstractParameters, field::Symbol, default)
-    self_name = path(parameters)
     if field ∉ keys(parameters)
-        throw(InexistentParameterException([self_name; field]))
+        throw(InexistentParameterException([path(parameters); field]))
     end
     parameter = getfield(parameters, field)
     if typeof(parameter) <: AbstractParameters
@@ -74,51 +72,57 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol, default
     end
 end
 
+function Base.deepcopy(parameters::T) where {T<:Union{AbstractParameter,AbstractParameters}}
+    parameters1 = Base.deepcopy_internal(parameters, Base.IdDict())::T
+    setfield!(parameters1, :_parent, WeakRef(nothing))
+    return parameters1
+end
+
 function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value::Any)
     if startswith(string(field), "_")
         error("use setfield! for :$field")
     end
     if field ∉ keys(parameters)
-        self_name = path(parameters)
-        throw(InexistentParameterException([self_name; field]))
-    else
-        parameter = getfield(parameters, field)
-        # handle OptParameter in Entry
-        if typeof(parameter) <: Entry
-            tp = typeof(parameter).parameters[1]
-            if typeof(value) <: OptParameter
-                if tp <: Union{Integer,Bool}
-                    parameter.lower = value.lower - 0.5
-                    parameter.upper = value.upper + 0.5
-                else
-                    parameter.lower = value.lower
-                    parameter.upper = value.upper
-                end
-                value = value.nominal
+        throw(InexistentParameterException([path(parameters); field]))
+    end
+    parameter = getfield(parameters, field)
+    # handle OptParameter in Entry
+    if typeof(parameter) <: Entry
+        tp = typeof(parameter).parameters[1]
+        if typeof(value) <: OptParameter
+            if tp <: Union{Integer,Bool}
+                parameter.lower = value.lower - 0.5
+                parameter.upper = value.upper + 0.5
+            else
+                parameter.lower = value.lower
+                parameter.upper = value.upper
             end
-            if ~(ismissing(parameter.lower) || ismissing(parameter.lower))
-                if tp <: Integer
-                    parameter.value = Int(round(value))
-                elseif tp <: Bool
-                    parameter.value = Bool(round(value))
-                else
-                    parameter.value = value
-                end
+            value = value.nominal
+        end
+        if ~(ismissing(parameter.lower) || ismissing(parameter.lower))
+            if tp <: Integer
+                parameter.value = Int(round(value))
+            elseif tp <: Bool
+                parameter.value = Bool(round(value))
             else
                 parameter.value = value
             end
-        elseif typeof(parameter) <: AbstractParameter
-            parameter.value = value
-            #setfield!(parameter, :_parent, WeakRef(parameters))
-            #setfield!(parameter, :_name, field)
-        elseif typeof(parameter) <: AbstractParameters
-            setfield!(parameters, field, value)
-            #setfield!(parameter, :_parent, WeakRef(parameters))
-            #setfield!(parameter, :_name, field)
         else
-            error("should not be here")
+            parameter.value = value
         end
+
+    elseif typeof(parameter) <: AbstractParameter
+        parameter.value = value
+
+    elseif typeof(parameter) <: AbstractParameters
+        setfield!(parameters, field, value)
+
+    else
+        error("AbstractParameters should only hold other AbstractParameter or AbstractParameters types")
     end
+
+    setfield!(parameter, :_name, field)
+    setfield!(parameter, :_parent, WeakRef(parameters))
 end
 
 function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})
@@ -126,7 +130,9 @@ function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})
 end
 
 function Base.parent(parameters::Union{AbstractParameter,AbstractParameters})
-    return getfield(parameters, :_parent).value
+    tmp = getfield(parameters, :_parent)
+    @assert typeof(tmp) == WeakRef
+    return tmp.value
 end
 
 function name(parameters::Union{AbstractParameter,AbstractParameters})

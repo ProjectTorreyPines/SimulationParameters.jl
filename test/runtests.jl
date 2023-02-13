@@ -9,7 +9,7 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit wher
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = :equilibrium
     R0::Entry{T} = Entry(T, "m", "Geometric genter of the plasma. NOTE: This also scales the radial build layers.")
-    casename::Entry{String} = Entry(String, "", "Mnemonic name of the case being run")
+    casename::Entry{String} = Entry(String, "-", "Mnemonic name of the case being run")
     init_from::Switch{Symbol} = Switch(Symbol, [
             :ods => "Load data from ODS saved in .json format (where possible, and fallback on scalars otherwise)",
             :scalars => "Initialize FUSE run from scalar parameters"
@@ -111,11 +111,23 @@ end
     @test opt_parameters(ini) == AbstractParameter[getfield(ini.equilibrium, :R0)]
 end
 
-@testset "GC" begin
+@testset "GC_parent" begin
     ini = ParametersInits()
     @test parent(ini.equilibrium) === ini
     GC.gc()
     @test parent(ini.equilibrium) === ini
+end
+
+@testset "GC_deepcopy" begin
+    ini = ParametersInits()
+    ini_eq = deepcopy(ini.equilibrium)
+    ini.equilibrium = ini_eq
+
+    #ini.equilibrium = ini_eq
+    #setup_parameters(ini)
+    #setfield!(ini_eq, :_parent, WeakRef(ini))
+
+    @test parent(ini.equilibrium) !== nothing
 end
 
 @testset "ConcreteTypes" begin
