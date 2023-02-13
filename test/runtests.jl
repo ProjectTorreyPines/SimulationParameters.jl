@@ -38,7 +38,7 @@ end
 
 #=============#
 
-@testset "BasicTests" begin
+@testset "basic" begin
     ini = ParametersInits()
 
     @test SimulationParameters.path(ini.equilibrium) == Symbol[:ini, :equilibrium]
@@ -73,7 +73,7 @@ end
     dict2par!(par2dict(ini), ParametersInits())
 end
 
-@testset "OptTests" begin
+@testset "opt_parameters" begin
     ini = ParametersInits()
     ini.equilibrium.R0 = 1.5 ↔ [1.2, 2.5]
     @test ini.equilibrium.R0 == 1.5
@@ -118,19 +118,25 @@ end
     @test parent(ini.equilibrium) === ini
 end
 
-@testset "GC_deepcopy" begin
+@testset "deepcopy" begin
     ini = ParametersInits()
+    ini.equilibrium.R0 = 0.0
+
     ini_eq = deepcopy(ini.equilibrium)
+    ini_eq.R0 = 1.0
+
+    @test ini.equilibrium.R0 == 0.0
+
     ini.equilibrium = ini_eq
+    @test ini.equilibrium.R0 == 1.0
 
     #ini.equilibrium = ini_eq
     #setup_parameters(ini)
     #setfield!(ini_eq, :_parent, WeakRef(ini))
-
     @test parent(ini.equilibrium) !== nothing
 end
 
-@testset "ConcreteTypes" begin
+@testset "concrete_types" begin
     ini = ParametersInits()
     ini.equilibrium.R0 = 5.0
 
