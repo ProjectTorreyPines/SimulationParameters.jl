@@ -18,7 +18,7 @@ function set_new_base!(parameters::AbstractParameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
             set_new_base!(parameter)
-        else
+        elseif !(parameter isa AbstractParametersSet)
             setfield!(parameter, :base, parameter.value)
         end
     end
@@ -33,7 +33,7 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
         throw(InexistentParameterException([path(parameters); field]))
     end
     parameter = getfield(parameters, field)
-    if typeof(parameter) <: AbstractParameters
+    if typeof(parameter) <: AbstractParameters || parameter isa AbstractParametersSet
         return parameter
     else
         if parameter.value === missing

@@ -1,4 +1,5 @@
 abstract type AbstractParameter end
+abstract type AbstractParametersSet end
 
 function AbstractTrees.children(par::AbstractParameter)
     if typeof(par.value) <: AbstractDict

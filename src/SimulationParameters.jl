@@ -43,7 +43,7 @@ include("optim.jl")
 #= ================= =#
 include("errors.jl")
 
-export AbstractParameter, AbstractParameters, setup_parameters
+export AbstractParameter, AbstractParameters, AbstractParametersSet, setup_parameters
 export Entry, Switch
 export par2dict, par2dict!, dict2par!, set_new_base!
 export OptParameter, ↔, opt_parameters, parameters_from_opt!
