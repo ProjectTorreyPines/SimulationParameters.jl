@@ -25,7 +25,7 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
     par = node_value.value
     if typeof(par) <: AbstractParameters
         printstyled(io, field; bold=true)
-    elseif typeof(par) <: AbstractParameter
+    elseif typeof(par) <: AbstractParameter 
         if typeof(par.value) <: AbstractDict
             printstyled(io, "$field[:]"; bold=true)
         else
@@ -37,6 +37,7 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
                 printstyled(io, " [$(par.units)]"; color=color)
             end
         end
+    elseif par isa AbstractParametersSet
     else
         error(field)
     end
