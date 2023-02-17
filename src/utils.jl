@@ -1,3 +1,5 @@
+import DataStructures
+
 """
     par2dict(par::AbstractParameters)
 
@@ -47,7 +49,7 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
         elseif dct[dkey][dvalue] === nothing
             setproperty!(par, field, missing)
         elseif typeof(dct[dkey][dvalue]) <: AbstractVector # this could be done more generally
-            setproperty!(par, field, Real[k for k in dct[dkey][dvalue]])
+            setproperty!(par, field, Float64[k for k in dct[dkey][dvalue]])
         else
             try
                 setproperty!(par, field, Symbol(dct[dkey][dvalue]))
