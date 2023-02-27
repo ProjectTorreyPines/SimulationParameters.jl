@@ -1,6 +1,6 @@
 abstract type AbstractParameters end
 
-function setup_parameters(parameters::AbstractParameters)
+function setup_parameters!(parameters::AbstractParameters)
     for field in keys(parameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: Union{AbstractParameter,AbstractParameters}
@@ -8,7 +8,7 @@ function setup_parameters(parameters::AbstractParameters)
             setfield!(parameter, :_name, field)
         end
         if typeof(parameter) <: AbstractParameters
-            setup_parameters(parameter)
+            setup_parameters!(parameter)
         end
     end
 end

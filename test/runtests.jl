@@ -27,7 +27,7 @@ function ParametersInits{T}() where {T<:Real}
         :ini,
         FUSEparameters__equilibrium{T}()
     )
-    setup_parameters(ini)
+    setup_parameters!(ini)
     return ini
 end
 
@@ -132,7 +132,7 @@ end
     # Cannot understand why this is broken. It should work!
     # Uncommenting one of the lines below makes it work, but why does not work as is?
     #ini.equilibrium = ini_eq
-    #setup_parameters(ini)
+    #setup_parameters!(ini)
     #setfield!(ini_eq, :_parent, WeakRef(ini))
     @test_broken parent(ini.equilibrium) !== nothing
 end
