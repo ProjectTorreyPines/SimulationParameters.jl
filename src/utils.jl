@@ -1,5 +1,3 @@
-import DataStructures
-
 """
     par2dict(par::AbstractParameters)
 

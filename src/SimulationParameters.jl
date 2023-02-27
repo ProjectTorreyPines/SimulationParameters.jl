@@ -1,5 +1,6 @@
 module SimulationParameters
 
+import DataStructures
 import AbstractTrees
 import JSON
 
