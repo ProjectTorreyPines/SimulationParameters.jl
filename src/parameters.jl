@@ -85,7 +85,9 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
     if field ∉ keys(parameters)
         throw(InexistentParameterException([path(parameters); field]))
     end
+
     parameter = getfield(parameters, field)
+    
     # handle OptParameter in Entry
     if typeof(parameter) <: Entry
         tp = typeof(parameter).parameters[1]
@@ -121,6 +123,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         error("AbstractParameters should only hold other AbstractParameter or AbstractParameters types")
     end
 
+    parameter = getfield(parameters, field)
     setfield!(parameter, :_name, field)
     setfield!(parameter, :_parent, WeakRef(parameters))
 end

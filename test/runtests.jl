@@ -120,21 +120,23 @@ end
 @testset "deepcopy" begin
     ini = ParametersInits()
     ini.equilibrium.R0 = 0.0
+    @test parent(ini.equilibrium) == ini
 
     ini_eq = deepcopy(ini.equilibrium)
+    @test parent(ini_eq) === nothing
+    # change value of the copy
     ini_eq.R0 = 1.0
 
+    # make sure that value change of the copy does not affect the original value
     @test ini.equilibrium.R0 == 0.0
 
+    # assign the copy to the original ini
     ini.equilibrium = ini_eq
+    # test that the value of the original now matches the copy
     @test ini.equilibrium.R0 == 1.0
 
-    # Cannot understand why this is broken. It should work!
-    # Uncommenting one of the lines below makes it work, but why does not work as is?
-    #ini.equilibrium = ini_eq
-    #setup_parameters!(ini)
-    #setfield!(ini_eq, :_parent, WeakRef(ini))
-    @test_broken parent(ini.equilibrium) !== nothing
+    # test that the parent is set properly
+    @test parent(ini.equilibrium) === ini
 end
 
 @testset "concrete_types" begin
