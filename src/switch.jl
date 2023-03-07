@@ -6,7 +6,7 @@ end
 mutable struct Switch{T} <: AbstractParameter
     _name::Union{Missing,Symbol}
     _parent::WeakRef
-    options::Dict{Any,SwitchOption}
+    options::DataStructures.OrderedDict{Any,SwitchOption}
     units::String
     description::String
     value::Union{Missing,T}
@@ -15,19 +15,19 @@ mutable struct Switch{T} <: AbstractParameter
 end
 
 """
-    Switch(T::Type, options::Dict{Any,SwitchOption}, units::String, description::String; default=missing)
+    Switch(T::Type, options::DataStructures.OrderedDict{Any,SwitchOption}, units::String, description::String; default=missing)
 
 Defines a switch parameter
 """
-function Switch(T::Type, options::Dict{Any,SwitchOption}, units::String, description::String; default=missing)
+function Switch(T::Type, options::DataStructures.OrderedDict{Any,SwitchOption}, units::String, description::String; default=missing)
     if !in(default, keys(options))
         error("$(repr(default)) is not a valid option: $(collect(keys(options)))")
     end
     return Switch{T}(missing, WeakRef(nothing), options, units_check(units, description), description, default, default, default)
 end
 
-function Switch(T::Type, options::Vector{<:Pair}, units::String, description::String; default=missing)
-    opts = Dict{Any,SwitchOption}()
+function Switch(T::Type, options::Union{AbstractVector{<:Pair},AbstractDict}, units::String, description::String; default=missing)
+    opts = DataStructures.OrderedDict{Any,SwitchOption}()
     for (key, desc) in options
         opts[key] = SwitchOption(key, desc)
     end
@@ -35,7 +35,7 @@ function Switch(T::Type, options::Vector{<:Pair}, units::String, description::St
 end
 
 function Switch(T::Type, options::Vector{<:Union{Symbol,String}}, units::String, description::String; default=missing)
-    opts = Dict{eltype(options),SwitchOption}()
+    opts = DataStructures.OrderedDict{eltype(options),SwitchOption}()
     for key in options
         opts[key] = SwitchOption(key, "$key")
     end
