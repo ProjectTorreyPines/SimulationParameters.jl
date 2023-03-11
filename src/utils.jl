@@ -42,6 +42,11 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
             dkey = string(field)
             dvalue = "value"
         end
+        if dkey ∉ keys(dct)
+            # this can happen when dct and par are from different versions
+            @warn "$dkey is obsolete and does not exist anymore in $(join(path(par),"."))"
+            continue
+        end
         if typeof(val) <: AbstractParameters
             dict2par!(dct[dkey], val)
         elseif dct[dkey][dvalue] === nothing
