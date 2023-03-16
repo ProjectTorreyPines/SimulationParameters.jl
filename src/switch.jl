@@ -6,7 +6,7 @@ end
 mutable struct Switch{T} <: AbstractParameter
     _name::Union{Missing,Symbol}
     _parent::WeakRef
-    options::OrderedCollections.OrderedDict{Any,SwitchOption}
+    options::AbstractDict{<:Any,SwitchOption}
     units::String
     description::String
     value::Union{Missing,T}
@@ -15,18 +15,22 @@ mutable struct Switch{T} <: AbstractParameter
 end
 
 """
-    Switch(T::Type, options::OrderedCollections.OrderedDict{Any,SwitchOption}, units::String, description::String; default=missing)
+    Switch(T::Type, options::AbstractDict{Any,SwitchOption}, units::String, description::String; default=missing)
 
 Defines a switch parameter
 """
-function Switch(T::Type, options::OrderedCollections.OrderedDict{Any,SwitchOption}, units::String, description::String; default=missing)
-    if !in(default, keys(options))
+function Switch(T::Type, options::AbstractDict{<:Any,SwitchOption}, units::String, description::String; default=missing)
+    if default === missing
+        default_value = missing
+    elseif default ∈ keys(options)
+        default_value = options[default].value
+    else
         error("$(repr(default)) is not a valid option: $(collect(keys(options)))")
     end
-    return Switch{T}(missing, WeakRef(nothing), options, units_check(units, description), description, default, default, default)
+    return Switch{T}(missing, WeakRef(nothing), options, units_check(units, description), description, default_value, default_value, default_value)
 end
 
-function Switch(T::Type, options::Union{AbstractVector{<:Pair},AbstractDict}, units::String, description::String; default=missing)
+function Switch(T::Type, options::Vector{Pair{Symbol,String}}, units::String, description::String; default=missing)
     opts = OrderedCollections.OrderedDict{Any,SwitchOption}()
     for (key, desc) in options
         opts[key] = SwitchOption(key, desc)
@@ -42,13 +46,12 @@ function Switch(T::Type, options::Vector{<:Union{Symbol,String}}, units::String,
     return Switch{T}(missing, WeakRef(nothing), opts, units_check(units, description), description, default, default, default)
 end
 
-function Base.setproperty!(p::Switch, field::Symbol, value)
-    if typeof(value) <: Pair
-        p.options[value.first].value = value.second
-        value = value.first
+function Base.setproperty!(p::Switch, field::Symbol, switch_value)
+    if switch_value === missing
+        setfield!(p, :value, missing)
+    elseif switch_value in keys(p.options)
+        setfield!(p, :value, p.options[switch_value].value)
+    else
+        throw(BadParameterException([field], switch_value, p.units, collect(keys(p.options))))
     end
-    if (value !== missing) && !(value in keys(p.options))
-        throw(BadParameterException([field], value, p.units, collect(keys(p.options))))
-    end
-    return setfield!(p, :value, value)
 end

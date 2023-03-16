@@ -4,6 +4,11 @@ using Test
 abstract type ParametersInit <: AbstractParameters end # container for all parameters of a init
 abstract type ParametersAllInits <: AbstractParameters end # --> abstract type of ParametersInits, container for all parameters of all inits
 
+options = Dict(
+    :1 => SwitchOption(1, "1"),
+    :2 => SwitchOption(2, "2"),
+    :3 => SwitchOption(3, "3"))
+
 Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Real}
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = :equilibrium
@@ -13,6 +18,7 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit wher
             :ods => "Load data from ODS saved in .json format (where possible, and fallback on scalars otherwise)",
             :scalars => "Initialize FUSE run from scalar parameters"
         ], "myunits", "Initialize run from")
+    dict_option::Switch{Int} = Switch(Int, options, "-", "My switch with SwitchOption")
 end
 
 mutable struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
@@ -65,6 +71,8 @@ end
 
     @test (ini.equilibrium.init_from = :ods) == :ods
     @test_throws BadParameterException ini.equilibrium.init_from = :odsa
+
+    @test (ini.equilibrium.dict_option = :1) == 1
 
     println(ini)
     println(ini.equilibrium.R0)

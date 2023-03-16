@@ -45,7 +45,7 @@ include("optim.jl")
 include("errors.jl")
 
 export AbstractParameter, AbstractParameters, setup_parameters!
-export Entry, Switch
+export Entry, Switch, SwitchOption
 export par2dict, par2dict!, dict2par!, set_new_base!
 export OptParameter, ↔, opt_parameters, parameters_from_opt!
 export InexistentParameterException, NotsetParameterException, BadParameterException
