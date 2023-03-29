@@ -25,7 +25,7 @@ function Switch(T::Type, options::AbstractDict{<:Any,SwitchOption}, units::Strin
     elseif default ∈ keys(options)
         default_value = options[default].value
     else
-        error("$(repr(default)) is not a valid option: $(collect(keys(options)))")
+        error("$description\n$(repr(default)) is not a valid option: $(collect(keys(options)))")
     end
     return Switch{T}(missing, WeakRef(nothing), options, units_check(units, description), description, default_value, default_value, default_value)
 end
@@ -35,7 +35,7 @@ function Switch(T::Type, options::Vector{Pair{Symbol,String}}, units::String, de
     for (key, desc) in options
         opts[key] = SwitchOption(key, desc)
     end
-    return Switch{T}(missing, WeakRef(nothing), opts, units_check(units, description), description, default, default, default)
+    return Switch(T, opts, units_check(units, description), description; default)
 end
 
 function Switch(T::Type, options::Vector{<:Union{Symbol,String}}, units::String, description::String; default=missing)
@@ -43,7 +43,7 @@ function Switch(T::Type, options::Vector{<:Union{Symbol,String}}, units::String,
     for key in options
         opts[key] = SwitchOption(key, "$key")
     end
-    return Switch{T}(missing, WeakRef(nothing), opts, units_check(units, description), description, default, default, default)
+    return Switch(T, opts, units_check(units, description), description; default)
 end
 
 function Base.setproperty!(p::Switch, field::Symbol, switch_value)

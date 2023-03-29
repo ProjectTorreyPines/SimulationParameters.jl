@@ -53,6 +53,7 @@ end
 
 """
 Return value of `key` parameter or `default` if parameter is missing
+
 NOTE: This is useful because accessing a `missing` parameter would raise an error
 """
 function Base.getproperty(parameters::AbstractParameters, field::Symbol, default)
