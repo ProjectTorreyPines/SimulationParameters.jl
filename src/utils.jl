@@ -4,24 +4,28 @@
 Convert FUSE parameters to dictionary
 """
 function par2dict(par::AbstractParameters)
-    ret = Dict()
-    return par2dict!(par, ret)
+    dct = Dict()
+    return par2dict!(par, dct)
 end
 
-function par2dict!(par::AbstractParameters, ret::AbstractDict)
-    for item in keys(par)
-        value = getfield(par, item)
+function par2dict!(par::AbstractParameters, dct::AbstractDict)
+    for field in keys(par)
+        value = getfield(par, field)
         if typeof(value) <: AbstractParameters
-            ret[item] = Dict()
-            par2dict!(value, ret[item])
+            dct[field] = Dict()
+            par2dict!(value, dct[field])
         elseif typeof(value) <: AbstractParameter
-            ret[item] = Dict()
-            for field in keys(value)
-                ret[item][field] = getfield(value, field)
+            tp = typeof(value).parameters[1]
+            if tp <: Enum
+                dct[field] = Int(getfield(value, :value))
+            else
+                dct[field] = getfield(value, :value)
             end
+        else
+            error("par2dict! should not be here")
         end
     end
-    return ret
+    return dct
 end
 
 function par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
@@ -32,36 +36,40 @@ end
 
 function dict2par!(dct::AbstractDict, par::AbstractParameters)
     for field in keys(par)
-        val = getfield(par, field)
+        value = getfield(par, field)
         if field ∈ keys(dct)
             # this is if dct was par2dict function
-            dkey = field
-            dvalue = :value
+            dkey = Symbol
         else
             # this is if dct was generated from json
-            dkey = string(field)
-            dvalue = "value"
+            dkey = string
         end
-        if dkey ∉ keys(dct)
-            # this can happen when dct and par are from different versions
-            @warn "$dkey is obsolete and does not exist anymore in $(join(path(par),"."))"
+        if dkey(field) ∉ keys(dct)
+            # this can happen when par is newer than dct
             continue
         end
-        if typeof(val) <: AbstractParameters
-            dict2par!(dct[dkey], val)
-        elseif dct[dkey][dvalue] === nothing
-            setproperty!(par, field, missing)
-        elseif typeof(dct[dkey][dvalue]) <: AbstractVector # this could be done more generally
-            setproperty!(par, field, Float64[k for k in dct[dkey][dvalue]])
+        if typeof(value) <: AbstractParameters
+            dict2par!(dct[dkey(field)], value)
         else
+            tp = typeof(value).parameters[1]
+            if typeintersect(tp, AbstractDict) == Union{} && typeof(dct[dkey(field)]) <: AbstractDict
+                tmp = dct[dkey(field)][dkey(:value)] # legacy way of saving data
+            else
+                tmp = dct[dkey(field)]
+            end
             try
-                setproperty!(par, field, Symbol(dct[dkey][dvalue]))
-            catch e
-                try
-                    setproperty!(par, field, dct[dkey][dvalue])
-                catch e
-                    display((field, e))
+                if tmp === nothing
+                    tmp = missing
+                elseif tp <: Enum
+                    tmp = tp(tmp)
+                elseif typeintersect(tp, Symbol) != Union{} && typeof(tmp) <: AbstractString
+                    tmp = Symbol(tmp)
+                elseif typeof(tmp) <: AbstractVector
+                    tmp = Float64[k for k in tmp]
                 end
+                setfield!(value, :value, tmp)
+            catch e
+                @error("reading $(join(path(par),".")).$field : $e")
             end
         end
     end
