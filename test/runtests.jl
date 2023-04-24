@@ -105,8 +105,6 @@ end
     ini = ParametersInits{Int}()
     ini.equilibrium.R0 = 2 ↔ [1, 3]
     @test ini.equilibrium.R0 == 2
-    ini.equilibrium.R0 = 2.0 ↔ [1, 3]
-    @test ini.equilibrium.R0 == 2
     ini.equilibrium.R0 = 1 ↔ [1, 3]
     @test ini.equilibrium.R0 == 1
     ini.equilibrium.R0 = 3 ↔ [1, 3]

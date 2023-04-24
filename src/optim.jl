@@ -1,14 +1,29 @@
-function OptParameter(nominal::Real, lower::Real, upper::Real)
+struct OptParameterRange{T} <:OptParameter where {T<:Real}
+    nominal::T
+    lower::T
+    upper::T
+    options::AbstractVector{Missing}
+end
+
+struct OptParameterChoice{T} <:OptParameter where {T<:Any}
+    nominal::T
+    lower::Missing
+    upper::Missing
+    options::AbstractVector{T}
+end
+
+
+function OptParameterRange(nominal::T, lower::T, upper::T) where {T}
     if nominal < lower
         error("Optimization parameter: nominal value < lower bound")
     elseif nominal > upper
         error("Optimization parameter: nominal value > lower bound")
     end
-    return OptParameter(nominal, lower, upper, Vector{typeof(nominal)}())
+    return OptParameterRange(nominal, lower, upper, Vector{Missing}())
 end
 
-function OptParameter(nominal::T, options::AbstractVector{T}) where {T}
-    return OptParameter(nominal, NaN, NaN, options)
+function OptParameterChoice(nominal::T, options::AbstractVector{T}) where {T}
+    return OptParameterChoice(nominal, missing, missing, options)
 end
 
 """
@@ -17,7 +32,9 @@ end
 "leftrightarrow" unicode constructor for OptParameter
 """
 function ↔(x::Real, r::AbstractVector)
-    return OptParameter(x, r[1], r[end])
+    @assert length(r) == 2
+    @assert typeof(x) === typeof(r[1]) === typeof(r[2]) "OptParameter `P ↔ [L, U]` must have the same type for `P`, `L`, and `U`"
+    return OptParameterRange(x, r[1], r[2])
 end
 
 """
@@ -26,7 +43,8 @@ end
 "leftrightarrow" unicode constructor for OptParameter
 """
 function ↔(x::Any, r::Tuple)
-    return OptParameter(x, NaN, NaN, collect(r))
+    @assert eltype(collect(r)) === typeof(x) "OptParameter `P ↔ (O1, O2, ...)` must have the same type for `P` and all the `Os`"
+    return OptParameterChoice(x, collect(r))
 end
 
 """

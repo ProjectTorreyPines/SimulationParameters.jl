@@ -1,4 +1,5 @@
 abstract type AbstractParameter end
+abstract type OptParameter end
 
 function AbstractTrees.children(par::AbstractParameter)
     if typeof(par.value) <: AbstractDict
@@ -29,9 +30,3 @@ function units_check(units::AbstractString, description::AbstractString)
     return units
 end
 
-struct OptParameter{T,N} <:Any where {T<:Any, N<:Number}
-    nominal::Union{T,N}
-    lower::N
-    upper::N
-    options::AbstractVector{T}
-end
