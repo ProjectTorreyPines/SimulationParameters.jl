@@ -1,13 +1,44 @@
 """
+    par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
+
+Save AbstractParameters to JSON
+
+NOTE: kw arguments are passed to JSON.print
+"""
+function par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
+    json_data = par2dict(par)
+    json_data = replace_symbols_to_colon_strings(json_data)
+    open(filename, "w") do io
+        JSON.print(io, json_data, 1; kw...)
+    end
+end
+
+"""
+    json2par(filename::AbstractString, par_data::AbstractParameters)
+
+Loads AbstractParameters from JSON
+"""
+function json2par(filename::AbstractString, par_data::AbstractParameters)
+    json_data = JSON.parsefile(filename, dicttype=OrderedCollections.OrderedDict)
+    json_data = replace_colon_strings_to_symbols(json_data)
+    return dict2par!(json_data, par_data)
+end
+
+"""
     par2dict(par::AbstractParameters)
 
-Convert FUSE parameters to dictionary
+Convert AbstractParameters to dictionary
 """
 function par2dict(par::AbstractParameters)
     dct = Dict()
     return par2dict!(par, dct)
 end
 
+"""
+    par2dict!(par::AbstractParameters, dct::AbstractDict)
+
+Convert AbstractParameters to dictionary
+"""
 function par2dict!(par::AbstractParameters, dct::AbstractDict)
     for field in keys(par)
         value = getfield(par, field)
@@ -28,44 +59,33 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
     return dct
 end
 
-function par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
-    open(filename, "w") do io
-        JSON.print(io, par2dict(par), 1; kw...)
-    end
-end
+"""
+    dict2par!(dct::AbstractDict, par::AbstractParameters)
 
+Convert dictionary to AbstractParameters
+"""
 function dict2par!(dct::AbstractDict, par::AbstractParameters)
     for field in keys(par)
         value = getfield(par, field)
-        if field ∈ keys(dct)
-            # this is if dct was par2dict function
-            dkey = Symbol
-        else
-            # this is if dct was generated from json
-            dkey = string
-        end
-        if dkey(field) ∉ keys(dct)
+        if field ∉ keys(dct)
             # this can happen when par is newer than dct
             continue
         end
         if typeof(value) <: AbstractParameters
-            dict2par!(dct[dkey(field)], value)
+            dict2par!(dct[field], value)
         else
             tp = typeof(value).parameters[1]
-            if typeintersect(tp, AbstractDict) == Union{} && typeof(dct[dkey(field)]) <: AbstractDict
-                tmp = dct[dkey(field)][dkey(:value)] # legacy way of saving data
-            else
-                tmp = dct[dkey(field)]
-            end
+            tmp = dct[field]
             try
                 if tmp === nothing
                     tmp = missing
                 elseif tp <: Enum
                     tmp = tp(tmp)
-                elseif typeintersect(tp, Symbol) != Union{} && typeof(tmp) <: AbstractString
-                    tmp = Symbol(tmp)
                 elseif typeof(tmp) <: AbstractVector
-                    tmp = Float64[k for k in tmp]
+                    try
+                        tmp = Float64[k for k in tmp]
+                    catch
+                    end
                 end
                 setfield!(value, :value, tmp)
             catch e
@@ -76,15 +96,60 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
     return par
 end
 
-function json2par(filename::AbstractString, par_data::AbstractParameters)
-    json_data = JSON.parsefile(filename, dicttype=OrderedCollections.OrderedDict)
-    return dict2par!(json_data, par_data)
+"""
+    replace_symbols_to_colon_strings(obj::Any)
+
+Recursively converts all Symbol in a data structure to strings preceeded by column `:`
+
+NOTE: does not modify the original obj but insteady makes a copy of the data
+"""
+function replace_symbols_to_colon_strings(obj::Any)
+    if isa(obj, AbstractDict)
+        new_dict = Dict()
+        for (k, v) in obj
+            new_key = isa(k, Symbol) ? ":$k" : k
+            new_value = isa(v, Symbol) ? ":$v" : replace_symbols_to_colon_strings(v)
+            new_dict[new_key] = new_value
+        end
+        return new_dict
+    elseif isa(obj, AbstractVector)
+        return [replace_symbols_to_colon_strings(elem) for elem in obj]
+    elseif isa(obj, Symbol)
+        return ":$obj"
+    else
+        return obj
+    end
+end
+
+"""
+    replace_colon_strings_to_symbols(obj::Any)
+
+Recursively converts all strings preceeded by column `:` to Symbol
+
+NOTE: does not modify the original obj but insteady makes a copy of the data
+"""
+function replace_colon_strings_to_symbols(obj::Any)
+    if isa(obj, AbstractDict)
+        new_dict = Dict()
+        for (k, v) in obj
+            new_key = isa(k, String) && startswith(k, ":") ? Symbol(lstrip(k, ':')) : k
+            new_value = isa(v, String) && startswith(v, ":") ? Symbol(lstrip(v, ':')) : replace_colon_strings_to_symbols(v)
+            new_dict[new_key] = new_value
+        end
+        return new_dict
+    elseif isa(obj, AbstractVector)
+        return [replace_colon_strings_to_symbols(elem) for elem in obj]
+    elseif isa(obj, String) && startswith(obj, ":")
+        return Symbol(lstrip(obj, ':'))
+    else
+        return obj
+    end
 end
 
 """
     diff(p1::AbstractParameters, p2::AbstractParameters)
 
-Look for differences between two `ini` or `act` sets of parameters
+Raises error there's a difference between two AbstractParameters
 """
 function Base.diff(p1::AbstractParameters, p2::AbstractParameters)
     k1 = keys(p1)
