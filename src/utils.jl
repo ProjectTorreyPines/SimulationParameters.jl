@@ -152,8 +152,8 @@ end
 Raises error there's a difference between two AbstractParameters
 """
 function Base.diff(p1::AbstractParameters, p2::AbstractParameters)
-    k1 = keys(p1)
-    k2 = keys(p2)
+    k1 = collect(keys(p1))
+    k2 = collect(keys(p2))
     commonkeys = intersect(Set(k1), Set(k2))
     if length(commonkeys) != length(k1)
         error("p1 has more keys")
@@ -173,4 +173,5 @@ function Base.diff(p1::AbstractParameters, p2::AbstractParameters)
             error("$key had different value:\n$v1\n\n$v2")
         end
     end
+    return false
 end
