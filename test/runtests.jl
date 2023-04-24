@@ -1,4 +1,5 @@
 using SimulationParameters
+import InteractiveUtils
 using Test
 
 abstract type ParametersInit <: AbstractParameters end # container for all parameters of a init
@@ -156,5 +157,5 @@ end
     end
 
     test_me(ini)
-    @code_warntype test_me(ini)
+    InteractiveUtils.@code_warntype test_me(ini)
 end
