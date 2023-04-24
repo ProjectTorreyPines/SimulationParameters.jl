@@ -29,9 +29,9 @@ function units_check(units::AbstractString, description::AbstractString)
     return units
 end
 
-struct OptParameter{T} <:Any where {T<:Any}
-    nominal::T
-    lower::Real
-    upper::Real
+struct OptParameter{T,N} <:Any where {T<:Any, N<:Number}
+    nominal::Union{T,N}
+    lower::N
+    upper::N
     options::AbstractVector{T}
 end

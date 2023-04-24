@@ -92,7 +92,6 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
     if typeof(parameter) <: AbstractParameter
         if typeof(value) <: OptParameter
             setfield!(parameter, :opt, value)
-            #value = opt2value(value, typeof(getfield(parameter, :value)))
             value = getfield(value, :nominal)
         else
             setfield!(parameter, :opt, missing)

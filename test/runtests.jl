@@ -99,6 +99,9 @@ end
     @test_throws ErrorException ini.equilibrium.R0 = 1.0 ↔ [1.2, 2.5]
     @test_throws ErrorException ini.equilibrium.R0 = 3.0 ↔ [1.2, 2.5]
 
+    parameters_from_opt!(ini, [1.3])
+    @test ini.equilibrium.R0 == 1.3
+
     ini = ParametersInits{Int}()
     ini.equilibrium.R0 = 2 ↔ [1, 3]
     @test ini.equilibrium.R0 == 2
@@ -112,27 +115,46 @@ end
     @test_throws ErrorException ini.equilibrium.R0 = 4 ↔ [1, 3]
 
     ini = ParametersInits{Bool}()
-    # boolean as range of integers
-    ini.equilibrium.R0 = 0 ↔ [0, 1]
-    @test ini.equilibrium.R0 == 0
     # boolean as range of bools
     ini.equilibrium.R0 = true ↔ [false, true]
     @test ini.equilibrium.R0 == true
     # boolean as boolean options
     ini.equilibrium.R0 = true ↔ (false, true)
     @test ini.equilibrium.R0 == true
-    # conversion of floats to bool works
-    ini.equilibrium.R0 = 0.0 ↔ [0, 1]
-    @test ini.equilibrium.R0 == 0
-    ini.equilibrium.R0 = 1.0 ↔ [0, 1]
-    @test ini.equilibrium.R0 == 1
+
     @test_throws ErrorException ini.equilibrium.R0 = -1 ↔ [0, 1]
     @test_throws ErrorException ini.equilibrium.R0 = 2 ↔ [0, 1]
 
+    # check generation of optimization_vector
     @test opt_parameters(ini) == AbstractParameter[getfield(ini.equilibrium, :R0)]
 
     ini.equilibrium.init_from = :ods ↔ (:ods, :scalars)
     @test ini.equilibrium.init_from == :ods
+    @test rand(ini.equilibrium, :init_from) in (:ods, :scalars)
+
+    # check generation of optimization_vector
+    @test opt_parameters(ini) == AbstractParameter[getfield(ini.equilibrium, :R0), getfield(ini.equilibrium, :init_from)]
+
+    parameters_from_opt!(ini, [0.5, 1])
+    @test ini.equilibrium.R0 == false
+    @test ini.equilibrium.init_from == :ods
+
+    parameters_from_opt!(ini, [1.49, 1.2])
+    @test ini.equilibrium.R0 == false
+    @test ini.equilibrium.init_from == :ods
+
+    parameters_from_opt!(ini, [1.5, 1.5])
+    @test ini.equilibrium.R0 == true
+    @test ini.equilibrium.init_from == :scalars
+
+    parameters_from_opt!(ini, [1.9, 2.0])
+    @test ini.equilibrium.R0 == true
+    @test ini.equilibrium.init_from == :scalars
+
+    parameters_from_opt!(ini, [2.5, 2.5])
+    @test ini.equilibrium.R0 == true
+    @test ini.equilibrium.init_from == :scalars
+
 end
 
 @testset "GC_parent" begin
