@@ -17,7 +17,8 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit wher
     casename::Entry{String} = Entry(String, "-", "Mnemonic name of the case being run")
     init_from::Switch{Symbol} = Switch(Symbol, [
             :ods => "Load data from ODS saved in .json format (where possible, and fallback on scalars otherwise)",
-            :scalars => "Initialize FUSE run from scalar parameters"
+            :scalars => "Initialize FUSE run from scalar parameters",
+            :my_own => "dummy"
         ], "myunits", "Initialize run from")
     dict_option::Switch{Int} = Switch(Int, options, "-", "My switch with SwitchOption")
     a_symbol::Entry{Symbol} = Entry(Symbol, "-", "something", default=:hello)
@@ -45,6 +46,10 @@ function ParametersInits()
 end
 
 #=============#
+
+ini = ParametersInits()
+ini.equilibrium.init_from = :ods ↔ (:ods, :scalars)
+ini
 
 @testset "basic" begin
     ini = ParametersInits()
@@ -107,10 +112,16 @@ end
     @test_throws ErrorException ini.equilibrium.R0 = 4 ↔ [1, 3]
 
     ini = ParametersInits{Bool}()
+    # boolean as range of integers
     ini.equilibrium.R0 = 0 ↔ [0, 1]
     @test ini.equilibrium.R0 == 0
-    ini.equilibrium.R0 = 0.5 ↔ [0, 1]
-    @test ini.equilibrium.R0 == 0
+    # boolean as range of bools
+    ini.equilibrium.R0 = true ↔ [false, true]
+    @test ini.equilibrium.R0 == true
+    # boolean as boolean options
+    ini.equilibrium.R0 = true ↔ (false, true)
+    @test ini.equilibrium.R0 == true
+    # conversion of floats to bool works
     ini.equilibrium.R0 = 0.0 ↔ [0, 1]
     @test ini.equilibrium.R0 == 0
     ini.equilibrium.R0 = 1.0 ↔ [0, 1]
@@ -119,6 +130,9 @@ end
     @test_throws ErrorException ini.equilibrium.R0 = 2 ↔ [0, 1]
 
     @test opt_parameters(ini) == AbstractParameter[getfield(ini.equilibrium, :R0)]
+
+    ini.equilibrium.init_from = :ods ↔ (:ods, :scalars)
+    @test ini.equilibrium.init_from == :ods
 end
 
 @testset "GC_parent" begin

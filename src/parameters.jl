@@ -89,32 +89,14 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
 
     parameter = getfield(parameters, field)
     
-    # handle OptParameter in Entry
-    if typeof(parameter) <: Entry
-        tp = typeof(parameter).parameters[1]
+    if typeof(parameter) <: AbstractParameter
         if typeof(value) <: OptParameter
-            if tp <: Union{Integer,Bool}
-                parameter.lower = value.lower - 0.5
-                parameter.upper = value.upper + 0.5
-            else
-                parameter.lower = value.lower
-                parameter.upper = value.upper
-            end
-            value = value.nominal
-        end
-        if ~(ismissing(parameter.lower) || ismissing(parameter.lower))
-            if tp <: Integer
-                parameter.value = Int(round(value))
-            elseif tp <: Bool
-                parameter.value = Bool(round(value))
-            else
-                parameter.value = value
-            end
+            setfield!(parameter, :opt, value)
+            #value = opt2value(value, typeof(getfield(parameter, :value)))
+            value = getfield(value, :nominal)
         else
-            parameter.value = value
+            setfield!(parameter, :opt, missing)
         end
-
-    elseif typeof(parameter) <: AbstractParameter
         parameter.value = value
 
     elseif typeof(parameter) <: AbstractParameters
@@ -127,6 +109,8 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
     parameter = getfield(parameters, field)
     setfield!(parameter, :_name, field)
     setfield!(parameter, :_parent, WeakRef(parameters))
+
+    return value
 end
 
 function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})

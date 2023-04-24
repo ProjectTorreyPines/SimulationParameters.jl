@@ -6,8 +6,7 @@ mutable struct Entry{T} <: AbstractParameter
     value::Union{Missing,T}
     base::Union{Missing,T}
     default::Union{Missing,T}
-    lower::Union{Missing,Float64}
-    upper::Union{Missing,Float64}
+    opt::Union{Missing,OptParameter}
 end
 
 """
@@ -16,5 +15,5 @@ end
 Defines a entry parameter
 """
 function Entry(T::Type, units::String, description::String; default=missing)
-    return Entry{T}(missing, WeakRef(nothing), units_check(units, description), description, default, default, default, missing, missing)
+    return Entry{T}(missing, WeakRef(nothing), units_check(units, description), description, default, default, default, missing)
 end

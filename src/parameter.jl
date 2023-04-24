@@ -28,3 +28,10 @@ function units_check(units::AbstractString, description::AbstractString)
     end
     return units
 end
+
+struct OptParameter{T} <:Any where {T<:Any}
+    nominal::T
+    lower::Real
+    upper::Real
+    options::AbstractVector{T}
+end
