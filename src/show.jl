@@ -36,6 +36,7 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
             if length(replace(par.units, "-" => "")) > 0 && par.value !== missing
                 printstyled(io, " [$(par.units)]"; color=color)
             end
+            # printstyled(io, " $(par.description)"; color=:light_white, underline=true)
         end
     else
         error(field)
