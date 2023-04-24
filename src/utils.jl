@@ -69,7 +69,7 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                 end
                 setfield!(value, :value, tmp)
             catch e
-                @error("reading $(join(path(par),".")).$field : $e")
+                @error("reading $(join(path(par),".")).$(field) : $e")
             end
         end
     end

@@ -8,7 +8,7 @@ function AbstractTrees.printnode(io::IO, pars::AbstractParameters)
 end
 
 function AbstractTrees.children(pars::AbstractParameters)::Vector{ParsNodeRepr}
-    return [ParsNodeRepr(field, getfield(pars, field)) for field in sort(collect(keys(pars)))]
+    return [ParsNodeRepr(field, getfield(pars, field)) for field in collect(keys(pars))]
 end
 
 function AbstractTrees.children(node_value::ParsNodeRepr)
