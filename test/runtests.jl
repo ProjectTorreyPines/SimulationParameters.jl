@@ -20,6 +20,8 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit wher
             :scalars => "Initialize FUSE run from scalar parameters"
         ], "myunits", "Initialize run from")
     dict_option::Switch{Int} = Switch(Int, options, "-", "My switch with SwitchOption")
+    a_symbol::Entry{Symbol} = Entry(Symbol, "-", "something", default=:hello)
+    a_vector_symbol::Entry{Vector{Symbol}} = Entry(Vector{Symbol}, "-", "something vector", default=[:hello, :world])
 end
 
 mutable struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
@@ -146,6 +148,22 @@ end
 
     # test that the parent is set properly
     @test parent(ini.equilibrium) === ini
+end
+
+@testset "json_save_load" begin
+    ini = ParametersInits()
+    ini.equilibrium.R0 = 1000.0
+    
+    # equivalent of save to JSON without going to file
+    json_data = par2dict(ini)
+    json_data = SimulationParameters.replace_symbols_to_colon_strings(json_data)
+
+    # equivalent of load from JSON without loading from file
+    json_data = SimulationParameters.replace_colon_strings_to_symbols(json_data)
+    ini2 = ParametersInits()
+    dict2par!(json_data, ini2)
+
+    @test diff(ini, ini2) === false
 end
 
 @testset "concrete_types" begin
