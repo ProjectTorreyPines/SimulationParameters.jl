@@ -88,6 +88,13 @@ function parameters_from_opt!(parameters::AbstractParameters, optimization_vecto
     return parameters, k
 end
 
+function float_bounds(parameter::AbstractParameter)
+    if parameter.opt === missing
+        error("$(parameter.name) does not have a optimization range defined")
+    end
+    return float_bounds(parameter.opt)
+end
+
 function float_bounds(opt::OptParameter)
     tp = typeof(opt.nominal)
     if isempty(opt.options)
@@ -102,7 +109,7 @@ function float_bounds(opt::OptParameter)
         lower = 0.5
         upper = length(opt.options) + 0.5
     end
-    return (lower, upper)
+    return [lower, upper]
 end
 
 function (opt::OptParameter)(x::Float64)
@@ -110,7 +117,6 @@ function (opt::OptParameter)(x::Float64)
     lower, upper = float_bounds(opt)
     @assert (lower <= x) && (x <= upper) "OptParameter exceeded bounds"
     if isempty(opt.options)
-        @show(tp)
         if tp <: Union{Integer,Bool}
             if x == lower
                 return tp(ceil(x))

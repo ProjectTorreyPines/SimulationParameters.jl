@@ -47,7 +47,7 @@ include("errors.jl")
 export AbstractParameter, AbstractParameters, setup_parameters!
 export Entry, Switch, SwitchOption
 export par2dict, par2dict!, dict2par!, set_new_base!
-export OptParameter, ↔, opt_parameters, parameters_from_opt!, rand!
+export OptParameter, ↔, opt_parameters, parameters_from_opt!, rand, rand!, float_bounds
 export InexistentParameterException, NotsetParameterException, BadParameterException
 
 end # module SimulationParameters
