@@ -35,7 +35,7 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
         if typeof(par.value) <: AbstractDict
             tmp = "$(typeof(par.value))("
             for (k, v) in par.value
-                tmp *= "\n$(' '^M)$k => $v"
+                tmp *= "\n$(' '^M)$(repr(k)) => $(repr(v))"
             end
             tmp *= ")"
             printstyled(io, tmp; color=color)
