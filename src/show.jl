@@ -23,20 +23,42 @@ end
 function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
     field = node_value.field
     par = node_value.value
+    wrap_length = 120
     if typeof(par) <: AbstractParameters
         printstyled(io, field; bold=true)
     elseif typeof(par) <: AbstractParameter
+        color = parameter_color(par)
+        printstyled(io, "$(field)")
+        M = length("$(field)")
+        printstyled(io, " ➡ ")
+        M += 3
         if typeof(par.value) <: AbstractDict
-            printstyled(io, "$field[:]"; bold=true)
-        else
-            color = parameter_color(par)
-            printstyled(io, field)
-            printstyled(io, " ➡ ")
-            printstyled(io, "$(repr(par.value))"; color=color)
-            if length(replace(par.units, "-" => "")) > 0 && par.value !== missing
-                printstyled(io, " [$(par.units)]"; color=color)
+            tmp = "$(typeof(par.value))("
+            for (k, v) in par.value
+                tmp *= "\n$(' '^M)$k => $v"
             end
-            # printstyled(io, " $(par.description)"; color=:light_white, underline=true)
+            tmp *= ")"
+            printstyled(io, tmp; color=color)
+            M = length(split(tmp, "\n")[end])
+        else
+            printstyled(io, "$(repr(par.value))"; color=color)
+            M += length("$(repr(par.value))")
+        end
+        if length(replace(par.units, "-" => "")) > 0 && par.value !== missing
+            printstyled(io, " [$(par.units)]"; color=color, bold=true)
+            M += length(" [$(par.units)]")
+        end
+        if M > wrap_length - 10
+            print(io, "\n")
+            M = 0
+        else
+            print(io, " ")
+            M += 1
+        end
+        if typeof(par) <: Entry
+            printstyled(io, word_wrap(replace(par.description, "\n" => " "), wrap_length; i=wrap_length - M); color=:light_white, underline=false)
+        elseif typeof(par) <: Switch
+            printstyled(io, word_wrap("$(replace(par.description,"\n" => " ")) $([k for k in keys(par.options)])", wrap_length; i=wrap_length - M); color=:light_white, underline=false)
         end
     else
         error(field)
