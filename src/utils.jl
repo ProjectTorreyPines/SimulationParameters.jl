@@ -130,13 +130,9 @@ NOTE: does not modify the original obj but insteady makes a copy of the data
 """
 function replace_colon_strings_to_symbols(obj::Any)
     if isa(obj, AbstractDict)
-        new_dict = typeof(obj).name.wrapper()
-        for (k, v) in obj
-            new_key = isa(k, String) && startswith(k, ":") ? Symbol(lstrip(k, ':')) : k
-            new_value = isa(v, String) && startswith(v, ":") ? Symbol(lstrip(v, ':')) : replace_colon_strings_to_symbols(v)
-            new_dict[new_key] = new_value
-        end
-        return new_dict
+        kk = [isa(k, String) && startswith(k, ":") ? Symbol(lstrip(k, ':')) : k for k in keys(obj)]
+        vv = [isa(v, String) && startswith(v, ":") ? Symbol(lstrip(v, ':')) : replace_colon_strings_to_symbols(v) for v in values(obj)]
+        return typeof(obj).name.wrapper(zip(kk,vv))
     elseif isa(obj, AbstractVector)
         return [replace_colon_strings_to_symbols(elem) for elem in obj]
     elseif isa(obj, String) && startswith(obj, ":")
