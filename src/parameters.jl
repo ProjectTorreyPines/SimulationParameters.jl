@@ -117,9 +117,7 @@ function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})
 end
 
 function Base.parent(parameters::Union{AbstractParameter,AbstractParameters})
-    tmp = getfield(parameters, :_parent)
-    @assert typeof(tmp) == WeakRef
-    return tmp.value
+    return getfield(parameters, :_parent).value
 end
 
 function name(parameters::Union{AbstractParameter,AbstractParameters})

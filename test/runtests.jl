@@ -13,16 +13,16 @@ options = Dict(
 Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Real}
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = :equilibrium
-    R0::Entry{T} = Entry(T, "m", "Geometric genter of the plasma. NOTE: This also scales the radial build layers.")
-    casename::Entry{String} = Entry(String, "-", "Mnemonic name of the case being run")
-    init_from::Switch{Symbol} = Switch(Symbol, [
+    R0::Entry{T} = Entry{T}("m", "Geometric genter of the plasma. NOTE: This also scales the radial build layers.")
+    casename::Entry{String} = Entry{String}("-", "Mnemonic name of the case being run")
+    init_from::Switch{Symbol} = Switch{Symbol}([
             :ods => "Load data from ODS saved in .json format (where possible, and fallback on scalars otherwise)",
             :scalars => "Initialize FUSE run from scalar parameters",
             :my_own => "dummy"
         ], "myunits", "Initialize run from")
-    dict_option::Switch{Int} = Switch(Int, options, "-", "My switch with SwitchOption")
-    a_symbol::Entry{Symbol} = Entry(Symbol, "-", "something", default=:hello)
-    a_vector_symbol::Entry{Vector{Symbol}} = Entry(Vector{Symbol}, "-", "something vector", default=[:hello, :world])
+    dict_option::Switch{Int} = Switch{Int}(options, "-", "My switch with SwitchOption")
+    a_symbol::Entry{Symbol} = Entry{Symbol}("-", "something", default=:hello)
+    a_vector_symbol::Entry{Vector{Symbol}} = Entry{Vector{Symbol}}("-", "something vector", default=[:hello, :world])
 end
 
 mutable struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
