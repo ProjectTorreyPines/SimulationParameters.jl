@@ -16,7 +16,7 @@ mutable struct Switch{T} <: AbstractParameter
 end
 
 """
-    Switch(T::Type, options::AbstractDict{Any,SwitchOption}, units::String, description::String; default=missing)
+    Switch{T}(options::AbstractDict{<:Any,SwitchOption}, units::String, description::String; default=missing) where {T}
 
 Defines a switch parameter
 """
@@ -55,20 +55,4 @@ function Base.setproperty!(p::Switch, field::Symbol, switch_value)
     else
         throw(BadParameterException([field], switch_value, p.units, collect(keys(p.options))))
     end
-end
-
-
-"""
-    legacy
-"""
-function Switch(T::Type, options::AbstractDict{<:Any,SwitchOption}, units::String, description::String; default=missing)
-    Switch{T}(options, units, description; default)
-end
-
-function Switch(T::Type, options::Vector{Pair{Symbol,String}}, units::String, description::String; default=missing)
-    Switch{T}(options, units, description; default)
-end
-
-function Switch(T::Type, options::Vector{<:Union{Symbol,String}}, units::String, description::String; default=missing)
-    Switch{T}(options, units, description; default)
 end
