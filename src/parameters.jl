@@ -113,7 +113,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
 end
 
 function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})
-    return (field for field in fieldnames(typeof(parameters)) if field ∉ [:_parent, :_name])
+    return (field for field in fieldnames(typeof(parameters)) if field ∉ (:_parent, :_name))
 end
 
 function Base.parent(parameters::Union{AbstractParameter,AbstractParameters})
