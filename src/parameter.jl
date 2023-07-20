@@ -3,7 +3,7 @@ abstract type OptParameter end
 
 function AbstractTrees.children(par::AbstractParameter)
     if typeof(par.value) <: AbstractDict
-        return [k => par.value[k] for k in sort(collect(keys(par.value)))]
+        return [k => par.value[k] for k in sort!(collect(keys(par.value)))]
     else
         return []
     end
