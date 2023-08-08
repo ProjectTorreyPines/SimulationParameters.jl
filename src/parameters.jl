@@ -116,6 +116,10 @@ function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})
     return (field for field in fieldnames(typeof(parameters)) if field ∉ (:_parent, :_name))
 end
 
+function Base.values(parameters::Union{AbstractParameter,AbstractParameters})
+    return (getfield(parameters, field) for field in fieldnames(typeof(parameters)) if field ∉ (:_parent, :_name))
+end
+
 function Base.parent(parameters::Union{AbstractParameter,AbstractParameters})
     return getfield(parameters, :_parent).value
 end

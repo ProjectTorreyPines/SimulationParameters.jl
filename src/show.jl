@@ -93,3 +93,22 @@ function Base.show(io::IO, p::AbstractParameter)
         printstyled(io, "$(getfield(p, item))")
     end
 end
+
+function show_modified(pars::AbstractParameters)
+    show_modified(stdout, pars)
+end
+
+function show_modified(io::IO, pars::AbstractParameters)
+    printed = false
+    for field in values(pars)
+        if typeof(field) <: AbstractParameters
+            show_modified(field)
+        elseif field.value !== field.default
+            printed = true
+            println(io, "$(join(path(field), ".")) = $(repr(field.value))")
+        end
+    end
+    if printed
+        println(io, "")
+    end
+end
