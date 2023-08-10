@@ -103,7 +103,9 @@ function show_modified(io::IO, pars::AbstractParameters)
     for field in values(pars)
         if typeof(field) <: AbstractParameters
             show_modified(field)
-        elseif field.value !== field.default
+        elseif field.value === field.default
+            continue
+        elseif field.value !== field.default || (field.value == field.default) != true
             printed = true
             println(io, "$(join(path(field), ".")) = $(repr(field.value))")
         end
