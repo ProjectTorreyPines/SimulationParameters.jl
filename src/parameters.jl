@@ -87,8 +87,12 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         throw(InexistentParameterException([path(parameters); field]))
     end
 
+    if typeof(value) <: Expr
+        value = eval(value)
+    end
+
     parameter = getfield(parameters, field)
-    
+
     if typeof(parameter) <: AbstractParameter
         if typeof(value) <: OptParameter
             setfield!(parameter, :opt, value)
