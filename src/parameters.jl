@@ -44,6 +44,8 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
             else
                 error("Should not be here")
             end
+        elseif typeof(parameter.value) <: Function
+            return parameter.value(top(parameters).time.simulation_start)
         else
             tp = typeof(parameter).parameters[1]
             return parameter.value::tp
