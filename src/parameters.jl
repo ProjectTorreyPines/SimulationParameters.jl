@@ -88,7 +88,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
     end
 
     parameter = getfield(parameters, field)
-    
+
     if typeof(parameter) <: AbstractParameter
         if typeof(value) <: OptParameter
             setfield!(parameter, :opt, value)
@@ -126,6 +126,14 @@ end
 
 function name(parameters::Union{AbstractParameter,AbstractParameters})
     return getfield(parameters, :_name)
+end
+
+function top(parameters::AbstractParameters)
+    h = parameters
+    while parent(h) !== nothing
+        h = parent(h)
+    end
+    return h
 end
 
 function path(parameters::Union{AbstractParameter,AbstractParameters})::Vector{Symbol}
