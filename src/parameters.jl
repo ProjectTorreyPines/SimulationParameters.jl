@@ -130,7 +130,12 @@ function name(parameters::Union{AbstractParameter,AbstractParameters})
     return getfield(parameters, :_name)
 end
 
-function top(parameters::AbstractParameters)
+"""
+    top(parameters::Union{AbstractParameter,AbstractParameters})
+
+Returns the top level that contains this parameter/parameters
+"""
+function top(parameters::Union{AbstractParameter,AbstractParameters})
     h = parameters
     while parent(h) !== nothing
         h = parent(h)
@@ -138,11 +143,38 @@ function top(parameters::AbstractParameters)
     return h
 end
 
+"""
+    path(parameters::Union{AbstractParameter,AbstractParameters})::Vector{Symbol}
+
+Returns the location in the parameters hierarchy as a vector of Symbols
+"""
 function path(parameters::Union{AbstractParameter,AbstractParameters})::Vector{Symbol}
     if parent(parameters) === nothing
         return Symbol[name(parameters)]
     else
         return Symbol[path(parent(parameters)); name(parameters)]
+    end
+end
+
+"""
+    leaves(pars::AbstractParameters)::Vector{AbstractParameter}
+
+Returns a vector with all the parameters contained downstream of pars
+"""
+function leaves(pars::AbstractParameters)::Vector{AbstractParameter}
+    res = Vector{AbstractParameter}()
+    leaves!(pars, res)
+    return res
+end
+
+function leaves!(pars::AbstractParameters, res::Vector{AbstractParameter})
+    for field in keys(pars)
+        par = getfield(pars, field)
+        if typeof(par) <: AbstractParameters
+            leaves!(par, res)
+        else
+            push!(res, par)
+        end
     end
 end
 

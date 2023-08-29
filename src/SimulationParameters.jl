@@ -4,44 +4,19 @@ import OrderedCollections
 import AbstractTrees
 import JSON
 
-#= ================= =#
-#  AbstractParameter  #
-#= ================= =#
 include("parameter.jl")
-
-#= ===== =#
-#  Entry  #
-#= ===== =#
 include("entry.jl")
-
-#= ====== =#
-#  Switch  #
-#= ====== =#
 include("switch.jl")
 
-#= ================== =#
-#  AbstractParameters  #
-#= ================== =#
 include("parameters.jl")
 
-#= ========= =#
-#  utilities  #
-#= ========= =#
 include("utils.jl")
 
-#= ==== =#
-#  show  #
-#= ==== =#
 include("show.jl")
+include("plot.jl")
 
-#= ====================== =#
-#  Optimization parameter  #
-#= ====================== =#
 include("optim.jl")
 
-#= ================= =#
-#  Parameters errors  #
-#= ================= =#
 include("errors.jl")
 
 export AbstractParameter, AbstractParameters, setup_parameters!
