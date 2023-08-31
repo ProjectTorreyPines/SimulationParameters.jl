@@ -3,9 +3,9 @@ mutable struct Entry{T} <: AbstractParameter
     _parent::WeakRef
     units::String
     description::String
-    value::Union{Missing,T}
-    base::Union{Missing,T}
-    default::Union{Missing,T}
+    value::Union{Missing,Function,T}
+    base::Union{Missing,Function,T}
+    default::Union{Missing,Function,T}
     opt::Union{Missing,OptParameter}
 end
 
