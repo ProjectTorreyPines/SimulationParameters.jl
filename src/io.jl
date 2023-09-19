@@ -9,7 +9,7 @@ function par2json(@nospecialize(par::AbstractParameters), filename::String; kw..
     json_data = par2dict(par)
     json_data = replace_symbols_to_colon_strings(json_data)
     open(filename, "w") do io
-        JSON.print(io, json_data, 1; kw...)
+        return JSON.print(io, json_data, 1; kw...)
     end
 end
 
@@ -19,7 +19,7 @@ end
 Loads AbstractParameters from JSON
 """
 function json2par(filename::AbstractString, par_data::AbstractParameters)
-    json_data = JSON.parsefile(filename, dicttype=OrderedCollections.OrderedDict)
+    json_data = JSON.parsefile(filename; dicttype=OrderedCollections.OrderedDict)
     json_data = replace_colon_strings_to_symbols(json_data)
     return dict2par!(json_data, par_data)
 end
@@ -140,7 +140,7 @@ function replace_colon_strings_to_symbols(obj::Any)
     if isa(obj, AbstractDict)
         kk = [isa(k, String) && startswith(k, ":") ? Symbol(lstrip(k, ':')) : k for k in keys(obj)]
         vv = [isa(v, String) && startswith(v, ":") ? Symbol(lstrip(v, ':')) : replace_colon_strings_to_symbols(v) for v in values(obj)]
-        return typeof(obj).name.wrapper(zip(kk,vv))
+        return typeof(obj).name.wrapper(zip(kk, vv))
     elseif isa(obj, AbstractVector)
         return [replace_colon_strings_to_symbols(elem) for elem in obj]
     elseif isa(obj, String) && startswith(obj, ":")

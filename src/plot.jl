@@ -36,7 +36,7 @@ end
         primary := false
         marker := :dot
         markerstrokewidth := 0.0
-        title := join(path(par)[2:end],".")
+        title := join(path(par)[2:end], ".")
         link := :x
         ylabel := "[$(par.units)]"
         xlabel := "[s]"

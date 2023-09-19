@@ -1,11 +1,11 @@
-struct OptParameterRange{T} <:OptParameter where {T<:Real}
+struct OptParameterRange{T} <: OptParameter where {T<:Real}
     nominal::T
     lower::T
     upper::T
     options::AbstractVector{Missing}
 end
 
-struct OptParameterChoice{T} <:OptParameter where {T<:Any}
+struct OptParameterChoice{T} <: OptParameter where {T<:Any}
     nominal::T
     lower::Missing
     upper::Missing
@@ -145,14 +145,14 @@ function opt2value(opt::OptParameter, tp::Type)
         if tp <: Integer
             lower = Int(opt.lower)
             upper = Int(opt.upper)
-            return rand(range(opt.lower, stop=opt.upper))
+            return rand(range(opt.lower; stop=opt.upper))
         else
             lower = opt.lower
             upper = opt.upper
             return lower + rand() * (upper - lower)
         end
     else
-        index = rand(range(1, stop=length(opt.options)))
+        index = rand(range(1; stop=length(opt.options)))
         return opt.options[index]
     end
 end
@@ -164,5 +164,5 @@ end
 
 function rand!(parameters::AbstractParameters, field::Symbol)
     parameter = getfield(parameters, field)
-    setfield!(parameter, :value, rand(parameters, field))
+    return setfield!(parameter, :value, rand(parameters, field))
 end

@@ -4,7 +4,7 @@ struct ParsNodeRepr
 end
 
 function AbstractTrees.printnode(io::IO, pars::AbstractParameters)
-    printstyled(io, split(string(typeof(pars)), "__")[end]; bold=true)
+    return printstyled(io, split(string(typeof(pars)), "__")[end]; bold=true)
 end
 
 function AbstractTrees.children(pars::AbstractParameters)::Vector{ParsNodeRepr}
@@ -58,7 +58,12 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
         if typeof(par) <: Entry
             printstyled(io, word_wrap(replace(par.description, "\n" => " "), wrap_length; i=wrap_length - M); color=:light_white, underline=false)
         elseif typeof(par) <: Switch
-            printstyled(io, word_wrap("$(replace(par.description,"\n" => " ")) $([k for k in keys(par.options)])", wrap_length; i=wrap_length - M); color=:light_white, underline=false)
+            printstyled(
+                io,
+                word_wrap("$(replace(par.description,"\n" => " ")) $([k for k in keys(par.options)])", wrap_length; i=wrap_length - M);
+                color=:light_white,
+                underline=false
+            )
         end
     else
         error(field)
@@ -95,7 +100,7 @@ function Base.show(io::IO, p::AbstractParameter)
 end
 
 function show_modified(pars::AbstractParameters)
-    show_modified(stdout, pars)
+    return show_modified(stdout, pars)
 end
 
 function show_modified(io::IO, pars::AbstractParameters)

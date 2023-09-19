@@ -36,5 +36,5 @@ function Base.showerror(io::IO, e::BadParameterException)
     if length(replace(e.units, "-" => "")) > 0
         units = " [$(e.units)]"
     end
-    print(io, "Parameter $(join(e.path,".")) = $(repr(e.value))$units is not one of the valid options $(join(map(repr, e.options),", "))")
+    return print(io, "Parameter $(join(e.path,".")) = $(repr(e.value))$units is not one of the valid options $(join(map(repr, e.options),", "))")
 end

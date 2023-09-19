@@ -14,6 +14,6 @@ end
 
 Defines a entry parameter
 """
-function Entry{T}(units::String, description::String; default::Union{Missing,T}=missing) where T
+function Entry{T}(units::String, description::String; default::Union{Missing,T}=missing) where {T}
     return Entry{T}(:not_set, WeakRef(nothing), units_check(units, description), description, default, default, default, missing)
 end
