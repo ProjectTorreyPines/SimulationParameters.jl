@@ -41,16 +41,24 @@ Convert AbstractParameters to dictionary
 """
 function par2dict!(par::AbstractParameters, dct::AbstractDict)
     for field in keys(par)
-        value = getfield(par, field)
-        if typeof(value) <: AbstractParameters
+        parameter = getfield(par, field)
+        if typeof(parameter) <: AbstractParameters
+            # NOTE: For now parameters are saved to JSON not time dependent
+            if field == :time
+                continue
+            end
             dct[field] = Dict()
-            par2dict!(value, dct[field])
-        elseif typeof(value) <: AbstractParameter
-            tp = typeof(value).parameters[1]
-            if tp <: Enum
-                dct[field] = Int(getfield(value, :value))
+            par2dict!(parameter, dct[field])
+        elseif typeof(parameter) <: AbstractParameter
+            tp = typeof(parameter).parameters[1]
+            value = getfield(parameter, :value)
+            if typeof(value) <: Function
+                # NOTE: For now parameters are saved to JSON not time dependent
+                dct[field] = value(top(par).time.simulation_start)::tp
+            elseif tp <: Enum
+                dct[field] = Int(value)
             else
-                dct[field] = getfield(value, :value)
+                dct[field] = value
             end
         else
             error("par2dict! should not be here")
@@ -66,15 +74,15 @@ Convert dictionary to AbstractParameters
 """
 function dict2par!(dct::AbstractDict, par::AbstractParameters)
     for field in keys(par)
-        value = getfield(par, field)
+        parameter = getfield(par, field)
         if field ∉ keys(dct)
             # this can happen when par is newer than dct
             continue
         end
-        if typeof(value) <: AbstractParameters
-            dict2par!(dct[field], value)
+        if typeof(parameter) <: AbstractParameters
+            dict2par!(dct[field], parameter)
         else
-            tp = typeof(value).parameters[1]
+            tp = typeof(parameter).parameters[1]
             tmp = dct[field]
             try
                 if tmp === nothing
@@ -87,7 +95,7 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                     catch
                     end
                 end
-                setfield!(value, :value, tmp)
+                setfield!(parameter, :value, tmp)
             catch e
                 @error("reading $(join(path(par),".")).$(field) : $e")
             end
