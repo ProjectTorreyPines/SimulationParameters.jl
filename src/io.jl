@@ -90,9 +90,10 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                 elseif tp <: Enum
                     tmp = tp(tmp)
                 elseif typeof(tmp) <: AbstractVector
-                    try
-                        tmp = Float64[k for k in tmp]
-                    catch
+                    if !isempty(tmp)
+                        tmp = eltype(tp).(tmp)
+                    else
+                        tmp = Vector{eltype(tp)}()
                     end
                 end
                 setfield!(parameter, :value, tmp)
