@@ -42,3 +42,13 @@ function word_wrap(s::String, n=92; i=n, p=1, w=1)
     end
     return s
 end
+
+function encode_array(arr::Vector{<:Any})
+    # Identify unique elements and create a mapping
+    mapping = OrderedCollections.OrderedDict(elem => idx for (idx, elem) in enumerate(unique(arr)))
+
+    # Encode the original array
+    encoded = [mapping[item] for item in arr]
+
+    return encoded, mapping
+end

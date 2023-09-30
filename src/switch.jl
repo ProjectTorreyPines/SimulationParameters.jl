@@ -52,6 +52,8 @@ function Base.setproperty!(p::Switch, field::Symbol, switch_value)
         setfield!(p, :value, missing)
     elseif switch_value in keys(p.options)
         setfield!(p, :value, p.options[switch_value].value)
+    elseif typeof(switch_value) <: Function
+        setfield!(p, :value, switch_value)
     else
         throw(BadParameterException([field], switch_value, p.units, collect(keys(p.options))))
     end
