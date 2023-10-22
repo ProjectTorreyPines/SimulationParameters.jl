@@ -6,7 +6,7 @@ mutable struct Entry{T} <: AbstractParameter
     value::Union{Missing,Function,T}
     base::Union{Missing,Function,T}
     default::Union{Missing,Function,T}
-    opt::Union{Missing,OptParameter}
+    opt::Union{Missing,OptParameter{T}}
 end
 
 """
