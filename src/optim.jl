@@ -1,17 +1,12 @@
+# ================= #
+# OptParameterRange #
+# ================= #
 struct OptParameterRange{T} <: OptParameter where {T<:Real}
     nominal::T
     lower::T
     upper::T
     options::AbstractVector{Missing}
 end
-
-struct OptParameterChoice{T} <: OptParameter where {T<:Any}
-    nominal::T
-    lower::Missing
-    upper::Missing
-    options::AbstractVector{T}
-end
-
 
 function OptParameterRange(nominal::T, lower::T, upper::T) where {T}
     if nominal < lower
@@ -22,37 +17,47 @@ function OptParameterRange(nominal::T, lower::T, upper::T) where {T}
     return OptParameterRange(nominal, lower, upper, Vector{Missing}())
 end
 
+"""
+    ↔(x::Real, r::AbstractVector)
+
+"leftrightarrow" unicode constructor for OptParameterRange
+"""
+function ↔(x::Real, r::AbstractVector)
+    @assert length(r) == 2
+    @assert typeof(x) === typeof(r[1]) === typeof(r[2]) "OptParameterRange `P ↔ [L, U]` must have the same type for `P`, `L`, and `U`"
+    return OptParameterRange(x, r[1], r[2])
+end
+
+# ================== #
+# OptParameterChoice #
+# ================== #
+struct OptParameterChoice{T} <: OptParameter where {T<:Any}
+    nominal::T
+    lower::Missing
+    upper::Missing
+    options::AbstractVector{T}
+end
+
+"""
+    ↔(x::Real, r::AbstractVector)
+
+"leftrightarrow" unicode constructor for OptParameterChoice
+"""
+function ↔(x::Any, r::Tuple)
+    @assert eltype(collect(r)) === typeof(x) "OptParameterChoice `P ↔ (O1, O2, ...)` must have the same type for `P` and all the options `Os`"
+    return OptParameterChoice(x, collect(r))
+end
+
 function OptParameterChoice(nominal::T, options::AbstractVector{T}) where {T}
     return OptParameterChoice(nominal, missing, missing, options)
 end
 
 """
-    ↔(x::Real, r::AbstractVector)
-
-"leftrightarrow" unicode constructor for OptParameter
-"""
-function ↔(x::Real, r::AbstractVector)
-    @assert length(r) == 2
-    @assert typeof(x) === typeof(r[1]) === typeof(r[2]) "OptParameter `P ↔ [L, U]` must have the same type for `P`, `L`, and `U`"
-    return OptParameterRange(x, r[1], r[2])
-end
-
-"""
-    ↔(x::Real, r::AbstractVector)
-
-"leftrightarrow" unicode constructor for OptParameter
-"""
-function ↔(x::Any, r::Tuple)
-    @assert eltype(collect(r)) === typeof(x) "OptParameter `P ↔ (O1, O2, ...)` must have the same type for `P` and all the `Os`"
-    return OptParameterChoice(x, collect(r))
-end
-
-"""
-    opt_parameters(parameters::AbstractParameters, optimization_vector=AbstractParameter[])
+    opt_parameters(parameters::AbstractParameters, optimization_vector::AbstractParameter{OptParameter}=AbstractParameter{OptParameter}[])
 
 Create and return the optimization_vector from parameters
 """
-function opt_parameters(parameters::AbstractParameters, optimization_vector=AbstractParameter[])
+function opt_parameters(parameters::AbstractParameters, optimization_vector::Vector{<:OptParameter}=OptParameter[])
     for field in keys(parameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
@@ -65,22 +70,22 @@ function opt_parameters(parameters::AbstractParameters, optimization_vector=Abst
 end
 
 """
-    parameters_from_opt!(parameters::AbstractParameters, optimization_vector::AbstractVector)
+    parameters_from_opt!(parameters::AbstractParameters, optimization_values::AbstractVector)
 
-Set optimization parameters based on the optimization_vector in place
+Set optimization parameters based on the optimization_values
 """
-function parameters_from_opt!(parameters::AbstractParameters, optimization_vector::AbstractVector)
-    parameters_from_opt!(parameters, optimization_vector, 1)
+function parameters_from_opt!(parameters::AbstractParameters, optimization_values::AbstractVector)
+    parameters_from_opt!(parameters, optimization_values, 1)
     return parameters
 end
 
-function parameters_from_opt!(parameters::AbstractParameters, optimization_vector::AbstractVector, k::Int)
+function parameters_from_opt!(parameters::AbstractParameters, optimization_values::AbstractVector, k::Int)
     for field in keys(parameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
-            _, k = parameters_from_opt!(parameter, optimization_vector, k)
+            _, k = parameters_from_opt!(parameter, optimization_values, k)
         elseif typeof(parameter.opt) <: OptParameter
-            value = parameter.opt(optimization_vector[k])
+            value = parameter.opt(optimization_values[k])
             setproperty!(parameter, :value, value)
             k += 1
         end
