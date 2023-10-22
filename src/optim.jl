@@ -5,7 +5,7 @@ struct OptParameterRange{T} <: OptParameter where {T<:Real}
     nominal::T
     lower::T
     upper::T
-    options::AbstractVector{Missing}
+    choices::missing
 end
 
 function OptParameterRange(nominal::T, lower::T, upper::T) where {T}
@@ -14,7 +14,7 @@ function OptParameterRange(nominal::T, lower::T, upper::T) where {T}
     elseif nominal > upper
         error("Optimization parameter: nominal value > lower bound")
     end
-    return OptParameterRange(nominal, lower, upper, Vector{Missing}())
+    return OptParameterRange(nominal, lower, upper, missing)
 end
 
 """
@@ -35,7 +35,7 @@ struct OptParameterChoice{T} <: OptParameter where {T<:Any}
     nominal::T
     lower::Missing
     upper::Missing
-    options::AbstractVector{T}
+    choices::AbstractVector{T}
 end
 
 """
@@ -44,12 +44,14 @@ end
 "leftrightarrow" unicode constructor for OptParameterChoice
 """
 function ↔(x::Any, r::Tuple)
-    @assert eltype(collect(r)) === typeof(x) "OptParameterChoice `P ↔ (O1, O2, ...)` must have the same type for `P` and all the options `Os`"
+    @assert eltype(collect(r)) === typeof(x) "OptParameterChoice `P ↔ (O1, O2, ...)` must have the same type for `P` and all the choices `Os`"
     return OptParameterChoice(x, collect(r))
 end
 
-function OptParameterChoice(nominal::T, options::AbstractVector{T}) where {T}
-    return OptParameterChoice(nominal, missing, missing, options)
+function OptParameterChoice(nominal::T, choices::AbstractVector{T}) where {T}
+    return OptParameterChoice(nominal, missing, missing, choices)
+end
+
 end
 
 """
@@ -102,7 +104,7 @@ end
 
 function float_bounds(opt::OptParameter)
     tp = typeof(opt.nominal)
-    if isempty(opt.options)
+    if opt.choices === missing
         if tp <: Union{Bool,Integer}
             lower = Int(opt.lower) - 0.5
             upper = Int(opt.upper) + 0.5
@@ -112,7 +114,7 @@ function float_bounds(opt::OptParameter)
         end
     else
         lower = 0.5
-        upper = length(opt.options) + 0.5
+        upper = length(opt.choices) + 0.5
     end
     return [lower, upper]
 end
@@ -121,7 +123,7 @@ function (opt::OptParameter)(x::Float64)
     tp = typeof(opt.nominal)
     lower, upper = float_bounds(opt)
     @assert (lower <= x) && (x <= upper) "OptParameter exceeded bounds"
-    if isempty(opt.options)
+    if opt.choices === missing
         if tp <: Union{Integer,Bool}
             if x == lower
                 return tp(ceil(x))
@@ -141,12 +143,12 @@ function (opt::OptParameter)(x::Float64)
         else
             index = Int(round(x))
         end
-        return opt.options[index]
+        return opt.choices[index]
     end
 end
 
 function opt2value(opt::OptParameter, tp::Type)
-    if isempty(opt.options)
+    if opt.choices === missing
         if tp <: Integer
             lower = Int(opt.lower)
             upper = Int(opt.upper)
@@ -157,8 +159,8 @@ function opt2value(opt::OptParameter, tp::Type)
             return lower + rand() * (upper - lower)
         end
     else
-        index = rand(range(1; stop=length(opt.options)))
-        return opt.options[index]
+        index = rand(range(1; stop=length(opt.choices)))
+        return opt.choices[index]
     end
 end
 
