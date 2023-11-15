@@ -129,7 +129,7 @@ end
 
     ini.equilibrium.init_from = :ods ↔ (:ods, :scalars)
     @test ini.equilibrium.init_from == :ods
-    @test rand(ini.equilibrium, :init_from) in (:ods, :scalars)
+    @test rand(getfield(ini.equilibrium, :init_from)) in (:ods, :scalars)
 
     # check generation of optimization_vector
     @test opt_parameters(ini) == AbstractParameter[getfield(ini.equilibrium, :R0), getfield(ini.equilibrium, :init_from)]

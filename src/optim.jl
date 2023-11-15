@@ -5,7 +5,7 @@ struct OptParameterRange{T} <: OptParameter where {T<:Real}
     nominal::T
     lower::T
     upper::T
-    choices::missing
+    choices::Missing
 end
 
 function OptParameterRange(nominal::T, lower::T, upper::T) where {T}
@@ -52,14 +52,37 @@ function OptParameterChoice(nominal::T, choices::AbstractVector{T}) where {T}
     return OptParameterChoice(nominal, missing, missing, choices)
 end
 
+# ==================== #
+# OptParameterFunction #
+# ==================== #
+struct OptParameterFunction{T} <: OptParameter where {T<:Function}
+    nominal::T
+    lower::T
+    upper::T
+    choices::Missing
 end
 
 """
-    opt_parameters(parameters::AbstractParameters, optimization_vector::AbstractParameter{OptParameter}=AbstractParameter{OptParameter}[])
+    ↔(x::Function, b::Function)
+
+"leftrightarrow" unicode constructor for OptParameterFunction
+"""
+function ↔(x::Function, b::Function)
+    return OptParameterFunction(x, b)
+end
+
+function OptParameterFunction(nominal::T, bounds::T) where {T<:Function}
+    return OptParameterFunction(nominal, t -> -bounds(t), bounds, missing)
+end
+
+# ==================== #
+
+"""
+    opt_parameters(parameters::AbstractParameters, optimization_vector::Vector{AbstractParameter}=AbstractParameter[])
 
 Create and return the optimization_vector from parameters
 """
-function opt_parameters(parameters::AbstractParameters, optimization_vector::Vector{<:OptParameter}=OptParameter[])
+function opt_parameters(parameters::AbstractParameters, optimization_vector::Vector{AbstractParameter}=AbstractParameter[])
     for field in keys(parameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
@@ -95,6 +118,14 @@ function parameters_from_opt!(parameters::AbstractParameters, optimization_value
     return parameters, k
 end
 
+# ============ #
+# float_bounds #
+# ============ #
+"""
+    float_bounds(parameter::AbstractParameter)
+
+Returns optimization bounds of a parameter (if it has one)
+"""
 function float_bounds(parameter::AbstractParameter)
     if parameter.opt === missing
         error("$(parameter.name) does not have a optimization range defined")
@@ -102,74 +133,101 @@ function float_bounds(parameter::AbstractParameter)
     return float_bounds(parameter.opt)
 end
 
-function float_bounds(opt::OptParameter)
+function float_bounds(opt::OptParameterRange)
     tp = typeof(opt.nominal)
-    if opt.choices === missing
-        if tp <: Union{Bool,Integer}
-            lower = Int(opt.lower) - 0.5
-            upper = Int(opt.upper) + 0.5
-        else
-            lower = opt.lower
-            upper = opt.upper
-        end
+    if tp <: Union{Bool,Integer}
+        lower = Int(opt.lower) - 0.5
+        upper = Int(opt.upper) + 0.5
     else
-        lower = 0.5
-        upper = length(opt.choices) + 0.5
+        lower = opt.lower
+        upper = opt.upper
     end
     return [lower, upper]
 end
 
-function (opt::OptParameter)(x::Float64)
+function float_bounds(opt::OptParameterChoice)
+    lower = 0.5
+    upper = length(opt.choices) + 0.5
+    return [lower, upper]
+end
+
+function (opt::OptParameterRange)(x::Float64)
     tp = typeof(opt.nominal)
     lower, upper = float_bounds(opt)
     @assert (lower <= x) && (x <= upper) "OptParameter exceeded bounds"
-    if opt.choices === missing
-        if tp <: Union{Integer,Bool}
-            if x == lower
-                return tp(ceil(x))
-            elseif x == upper
-                return tp(floor(x))
-            else
-                return tp(round(x))
-            end
-        else
-            return x
-        end
-    else
+    if tp <: Union{Integer,Bool}
         if x == lower
-            index = Int(ceil(x))
+            return tp(ceil(x))
         elseif x == upper
-            index = Int(floor(x))
+            return tp(floor(x))
         else
-            index = Int(round(x))
-        end
-        return opt.choices[index]
-    end
-end
-
-function opt2value(opt::OptParameter, tp::Type)
-    if opt.choices === missing
-        if tp <: Integer
-            lower = Int(opt.lower)
-            upper = Int(opt.upper)
-            return rand(range(opt.lower; stop=opt.upper))
-        else
-            lower = opt.lower
-            upper = opt.upper
-            return lower + rand() * (upper - lower)
+            return tp(round(x))
         end
     else
-        index = rand(range(1; stop=length(opt.choices)))
-        return opt.choices[index]
+        return x
     end
 end
 
-function Base.rand(parameters::AbstractParameters, field::Symbol)
-    parameter = getfield(parameters, field)
+function (opt::OptParameterChoice)(x::Float64)
+    lower, upper = float_bounds(opt)
+    @assert (lower <= x) && (x <= upper) "OptParameter exceeded bounds"
+    if x == lower
+        index = Int(ceil(x))
+    elseif x == upper
+        index = Int(floor(x))
+    else
+        index = Int(round(x))
+    end
+    return opt.choices[index]
+end
+
+# ========= #
+# opt2value #
+# ========= #
+"""
+    opt2value(opt::OptParameterRange, tp::Type)
+
+Samples the OptParameterRange for a value
+"""
+function opt2value(opt::OptParameterRange, tp::Type)
+    if tp <: Integer
+        lower = Int(opt.lower)
+        upper = Int(opt.upper)
+        return rand(range(opt.lower; stop=opt.upper))
+    else
+        lower = opt.lower
+        upper = opt.upper
+        return lower + rand() * (upper - lower)
+    end
+end
+
+"""
+    opt2value(opt::OptParameterChoice, tp::Type)
+
+Samples the OptParameterChoice for a value
+"""
+function opt2value(opt::OptParameterChoice, tp::Type)
+    index = rand(range(1; stop=length(opt.choices)))
+    return opt.choices[index]
+end
+
+# ==== #
+# rand #
+# ==== #
+"""
+    Base.rand(parameter::AbstractParameter)
+
+Generates a new random sample within the OptParameter distribution
+"""
+function Base.rand(parameter::AbstractParameter)
     return opt2value(parameter.opt, typeof(parameter.value))
 end
 
-function rand!(parameters::AbstractParameters, field::Symbol)
-    parameter = getfield(parameters, field)
-    return setfield!(parameter, :value, rand(parameters, field))
+"""
+    rand!(parameter::AbstractParameter)
+
+Generates a new random sample within the OptParameter distribution and updates the parameter value
+"""
+function rand!(parameter::AbstractParameter)
+    return setfield!(parameter, :value, rand(parameter))
 end
