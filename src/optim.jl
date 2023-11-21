@@ -87,6 +87,11 @@ function opt_parameters(parameters::AbstractParameters, optimization_vector::Vec
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
             opt_parameters(parameter, optimization_vector)
+        elseif typeof(parameter) <: AbstractParametersVector
+            aop = getfield(parameter, :_aop)
+            for kk in aop
+                opt_parameters(aop[kk], optimization_vector)
+            end
         elseif typeof(parameter.opt) <: OptParameter
             push!(optimization_vector, parameter)
         end
@@ -109,6 +114,10 @@ function parameters_from_opt!(parameters::AbstractParameters, optimization_value
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
             _, k = parameters_from_opt!(parameter, optimization_values, k)
+        elseif typeof(parameter) <: AbstractParametersVector
+            for kk in eachindex(getfield(parameter, :_aop))
+                _, k = parameters_from_opt!(parameter[kk], optimization_values, k)
+            end
         elseif typeof(parameter.opt) <: OptParameter
             value = parameter.opt(optimization_values[k])
             setproperty!(parameter, :value, value)

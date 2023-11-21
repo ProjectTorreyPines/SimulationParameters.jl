@@ -20,8 +20,8 @@ include("optim.jl")
 
 include("errors.jl")
 
-export AbstractParameter, AbstractParameters, setup_parameters!
-export Entry, Switch, SwitchOption
+export AbstractParameter, AbstractParameters, AbstractParametersVector, setup_parameters!
+export Entry, Switch, SwitchOption, ParametersVector
 export par2dict, par2dict!, dict2par!, set_new_base!
 export show_modified
 export OptParameter, ↔, opt_parameters, parameters_from_opt!, rand, rand!, float_bounds

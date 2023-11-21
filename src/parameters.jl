@@ -1,14 +1,42 @@
 abstract type AbstractParameters end
+abstract type AbstractParametersVector end
+
+Base.@kwdef mutable struct ParametersVector{T} <: AbstractParametersVector where {T<:AbstractParameters}
+    _parent::WeakRef = WeakRef(nothing)
+    _name::Symbol = Symbol("[]")
+    _aop::Vector{T} = Vector{T}()
+end
 
 function setup_parameters!(parameters::AbstractParameters)
     for field in keys(parameters)
         parameter = getfield(parameters, field)
-        if typeof(parameter) <: Union{AbstractParameter,AbstractParameters}
+        if typeof(parameter) <: Union{AbstractParameter,AbstractParameters,AbstractParametersVector}
             setfield!(parameter, :_parent, WeakRef(parameters))
             setfield!(parameter, :_name, field)
+        else
+            error("setup_parameters! should not be here 1")
         end
-        if typeof(parameter) <: AbstractParameters
+        if typeof(parameter) <: AbstractParameter
+            # pass
+        elseif typeof(parameter) <: AbstractParameters
             setup_parameters!(parameter)
+        elseif typeof(parameter) <: AbstractParametersVector
+            setup_parameters!(parameter)
+        else
+            error("setup_parameters! should not be here 2")
+        end
+    end
+end
+
+function setup_parameters!(parameters::AbstractParametersVector)
+    aop = getfield(parameters, :_aop)
+    for (kk, parameter) in enumerate(aop)
+        if typeof(parameter) <: AbstractParameters
+            setfield!(parameter, :_parent, WeakRef(parameters))
+            setfield!(parameter, :_name, Symbol(kk))
+            setup_parameters!(parameter)
+        else
+            error("setup_parameters! should not be here 3")
         end
     end
 end
@@ -18,11 +46,26 @@ function set_new_base!(parameters::AbstractParameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
             set_new_base!(parameter)
+        elseif typeof(parameter) <: AbstractParametersVector
+            set_new_base!(parameter)
         else
             setfield!(parameter, :base, parameter.value)
         end
     end
     return parameters
+end
+
+function set_new_base!(parameters::AbstractParametersVector)
+    aop = getfield(parameters, :_aop)
+    for (kk, parameter) in enumerate(aop)
+        if typeof(parameter) <: AbstractParameters
+            setfield!(parameter, :_parent, WeakRef(parameters))
+            setfield!(parameter, :_name, Symbol(kk))
+            set_new_base!(parameter)
+        else
+            error("set_new_base! should not be here")
+        end
+    end
 end
 
 function Base.getproperty(parameters::AbstractParameters, field::Symbol)
@@ -35,6 +78,8 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
     parameter = getfield(parameters, field)
     if typeof(parameter) <: AbstractParameters
         return parameter
+    elseif typeof(parameter) <: AbstractParametersVector
+        return getfield(parameter, :_aop)
     else
         if parameter.value === missing
             if typeof(parameter) <: Entry
@@ -124,11 +169,11 @@ function Base.values(parameters::Union{AbstractParameter,AbstractParameters})
     return (getfield(parameters, field) for field in fieldnames(typeof(parameters)) if field ∉ (:_parent, :_name))
 end
 
-function Base.parent(parameters::Union{AbstractParameter,AbstractParameters})
+function Base.parent(parameters::Union{AbstractParameter,AbstractParameters,AbstractParametersVector})
     return getfield(parameters, :_parent).value
 end
 
-function name(parameters::Union{AbstractParameter,AbstractParameters})
+function name(parameters::Union{AbstractParameter,AbstractParameters,AbstractParametersVector})
     return getfield(parameters, :_name)
 end
 
@@ -150,7 +195,7 @@ end
 
 Returns the location in the parameters hierarchy as a vector of Symbols
 """
-function path(parameters::Union{AbstractParameter,AbstractParameters})::Vector{Symbol}
+function path(parameters::Union{AbstractParameter,AbstractParameters,AbstractParametersVector})::Vector{Symbol}
     if parent(parameters) === nothing
         return Symbol[name(parameters)]
     else
@@ -174,6 +219,10 @@ function leaves!(pars::AbstractParameters, res::Vector{AbstractParameter})
         par = getfield(pars, field)
         if typeof(par) <: AbstractParameters
             leaves!(par, res)
+        elseif typeof(par) <: AbstractParametersVector
+            for p in getfield(par, :_aop)
+                leaves!(p, res)
+            end
         else
             push!(res, par)
         end

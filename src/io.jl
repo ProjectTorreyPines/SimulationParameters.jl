@@ -43,11 +43,10 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
     for field in keys(par)
         parameter = getfield(par, field)
         if typeof(parameter) <: AbstractParameters
-            # NOTE: For now parameters are saved to JSON not time dependent
-            if field == :time
-                continue
-            end
             dct[field] = Dict()
+            par2dict!(parameter, dct[field])
+        elseif typeof(parameter) <: AbstractParametersVector
+            dct[field] = []
             par2dict!(parameter, dct[field])
         elseif typeof(parameter) <: AbstractParameter
             tp = typeof(parameter).parameters[1]
@@ -67,6 +66,12 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
     return dct
 end
 
+function par2dict!(par::AbstractParametersVector, vec::AbstractVector)
+    for parameter in getfield(par, :_aop)
+        push!(vec, par2dict!(parameter, Dict()))
+    end
+end
+
 """
     dict2par!(dct::AbstractDict, par::AbstractParameters)
 
@@ -81,6 +86,13 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
         end
         if typeof(parameter) <: AbstractParameters
             dict2par!(dct[field], parameter)
+        elseif typeof(parameter) <: AbstractParametersVector
+            for kk in eachindex(dct[field])
+                aop = getfield(parameter, :_aop)
+                subpar = eltype(aop)()
+                push!(aop, subpar)
+                dict2par!(dct[field][kk], subpar)
+            end
         else
             tp = typeof(parameter).parameters[1]
             tmp = dct[field]

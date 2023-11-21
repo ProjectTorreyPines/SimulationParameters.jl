@@ -13,7 +13,10 @@ end
 
 function AbstractTrees.children(node_value::ParsNodeRepr)
     value = node_value.value
-    if typeof(value) <: AbstractParameters
+    if typeof(value) <: AbstractParametersVector
+        aop = getfield(value, :_aop)
+        return (ParsNodeRepr(k, aop[k]) for k in eachindex(aop))
+    elseif typeof(value) <: AbstractParameters
         return (ParsNodeRepr(field, getfield(value, field)) for field in keys(value))
     else
         return []
@@ -25,6 +28,8 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
     par = node_value.value
     wrap_length = 120
     if typeof(par) <: AbstractParameters
+        printstyled(io, field; bold=true)
+    elseif typeof(par) <: AbstractParametersVector
         printstyled(io, field; bold=true)
     elseif typeof(par) <: AbstractParameter
         color = parameter_color(par)
@@ -66,7 +71,7 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
             )
         end
     else
-        error(field)
+        error("Error representing `$field` of type `$(typeof(par))`")
     end
 end
 

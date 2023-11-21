@@ -10,6 +10,12 @@ options = Dict(
     :2 => SwitchOption(2, "2"),
     :3 => SwitchOption(3, "3"))
 
+Base.@kwdef mutable struct FUSEparameters__ece{T} <: ParametersInit where {T<:Real}
+    _parent::WeakRef = WeakRef(nothing)
+    _name::Symbol = :ece
+    power::Entry{T} = Entry{T}("W", "launched power")
+end
+
 Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Real}
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = :equilibrium
@@ -24,6 +30,7 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit wher
     dict_option::Switch{Int} = Switch{Int}(options, "-", "My switch with SwitchOption")
     a_symbol::Entry{Symbol} = Entry{Symbol}("-", "something"; default=:hello)
     a_vector_symbol::Entry{Vector{Symbol}} = Entry{Vector{Symbol}}("-", "something vector"; default=[:hello, :world])
+    v_params::ParametersVector{FUSEparameters__ece{T}} = ParametersVector{FUSEparameters__ece{T}}()
 end
 
 mutable struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
@@ -32,28 +39,31 @@ mutable struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
     equilibrium::FUSEparameters__equilibrium{T}
 end
 
-function ParametersInits{T}() where {T<:Real}
+function ParametersInits{T}(; n_ece::Int=0) where {T<:Real}
     ini = ParametersInits{T}(
         WeakRef(nothing),
         :ini,
         FUSEparameters__equilibrium{T}()
     )
+    for k in 1:n_ece
+        push!(ini.equilibrium.v_params, FUSEparameters__ece{T}())
+    end
     setup_parameters!(ini)
     return ini
 end
 
-function ParametersInits()
-    return ParametersInits{Float64}()
+function ParametersInits(args...; kw...)
+    return ParametersInits{Float64}(args...; kw...)
 end
 
 #=============#
 
-ini = ParametersInits()
+ini = ParametersInits(; n_ece=2)
 ini.equilibrium.init_from = :ods ↔ (:ods, :scalars)
 ini
 
 @testset "basic" begin
-    ini = ParametersInits()
+    ini = ParametersInits(; n_ece=2)
 
     @test SimulationParameters.path(ini.equilibrium) == Symbol[:ini, :equilibrium]
 
@@ -86,6 +96,17 @@ ini
     println(ini)
     println(ini.equilibrium.R0)
 
+    # working with vectors of parameters
+    println(ini.equilibrium.v_params)
+    println(ini.equilibrium.v_params[1])
+    ini.equilibrium.v_params[1].power = 1.0
+    @assert ini.equilibrium.v_params[1].power == 1.0
+    @assert length(ini.equilibrium.v_params) == 2
+
+    # leaves
+    SimulationParameters.leaves(ini)
+
+    # to and from dict for saving to json
     dict2par!(par2dict(ini), ParametersInits())
 end
 
@@ -153,7 +174,6 @@ end
     parameters_from_opt!(ini, [2.5, 2.5])
     @test ini.equilibrium.R0 == true
     @test ini.equilibrium.init_from == :scalars
-
 end
 
 @testset "GC_parent" begin
