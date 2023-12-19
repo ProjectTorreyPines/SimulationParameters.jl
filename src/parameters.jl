@@ -14,7 +14,9 @@ function setup_parameters!(parameters::AbstractParameters)
             setfield!(parameter, :_parent, WeakRef(parameters))
             setfield!(parameter, :_name, field)
         else
-            error("setup_parameters! should not be here 1")
+            error(
+                "$(join(path(parameters), ".")).$field can only be a subtype of `AbstractParameter`, `AbstractParameters`, `AbstractParametersVector` and not `$(typeof(parameter))`"
+            )
         end
         if typeof(parameter) <: AbstractParameter
             # pass
@@ -22,8 +24,6 @@ function setup_parameters!(parameters::AbstractParameters)
             setup_parameters!(parameter)
         elseif typeof(parameter) <: AbstractParametersVector
             setup_parameters!(parameter)
-        else
-            error("setup_parameters! should not be here 2")
         end
     end
 end
@@ -36,7 +36,7 @@ function setup_parameters!(parameters::AbstractParametersVector)
             setfield!(parameter, :_name, Symbol(kk))
             setup_parameters!(parameter)
         else
-            error("setup_parameters! should not be here 3")
+            error("$(join(path(parameters), "."))[$kk] can only be a subtype of `AbstractParameters`")
         end
     end
 end
@@ -63,7 +63,7 @@ function set_new_base!(parameters::AbstractParametersVector)
             setfield!(parameter, :_name, Symbol(kk))
             set_new_base!(parameter)
         else
-            error("set_new_base! should not be here")
+            error("$(join(path(parameters), "."))[$kk] can only be a subtype of `AbstractParameters`")
         end
     end
 end
@@ -87,7 +87,7 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
             elseif typeof(parameter) <: Switch
                 throw(NotsetParameterException([path(parameters); field], parameter.units, collect(keys(parameter.options))))
             else
-                error("Should not be here")
+                error("Only `Entry` and `Switch` are recognized subtypes of `AbstractParameter`")
             end
         else
             tp = typeof(parameter).parameters[1]
@@ -147,11 +147,14 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         end
         parameter.value = value
 
+    elseif typeof(parameter) <: ParametersVector
+        setfield!(parameters, field, value)
+
     elseif typeof(parameter) <: AbstractParameters
         setfield!(parameters, field, value)
 
     else
-        error("AbstractParameters should only hold other AbstractParameter or AbstractParameters types")
+        error("AbstractParameters should only hold other `AbstractParameter`, `AbstractParameters`, or `ParametersVector` types, not `$(typeof(parameter))")
     end
 
     parameter = getfield(parameters, field)
