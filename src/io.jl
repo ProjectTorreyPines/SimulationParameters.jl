@@ -6,11 +6,11 @@ Save AbstractParameters to JSON
 NOTE: kw arguments are passed to JSON.print
 """
 function par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
-    json_data = par2dict(par)
-    json_data = replace_symbols_to_colon_strings(json_data)
+    json_string = string(par; kw...)
     open(filename, "w") do io
-        return JSON.print(io, json_data, 1; kw...)
+        write(io, json_string)
     end
+    return json_string
 end
 
 """
@@ -19,9 +19,31 @@ end
 Loads AbstractParameters from JSON
 """
 function json2par(filename::AbstractString, par_data::AbstractParameters)
-    json_data = JSON.parsefile(filename; dicttype=OrderedCollections.OrderedDict)
+    open(filename, "r") do io
+        return str2par(read(io, String), par_data)
+    end
+end
+
+"""
+    str2par(jsonString::String, par_data::AbstractParameters)
+
+Loads AbstractParameters from string
+"""
+function str2par(jsonString::String, par_data::AbstractParameters)
+    json_data = JSON.parse(jsonString; dicttype=OrderedCollections.OrderedDict)
     json_data = replace_colon_strings_to_symbols(json_data)
     return dict2par!(json_data, par_data)
+end
+
+"""
+    string(@nospecialize(par::AbstractParameters); kw...)
+
+Returns JSON serialization of AbstractParameters
+"""
+function Base.string(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
+    json_data = par2dict(par)
+    json_data = replace_symbols_to_colon_strings(json_data)
+    return JSON.json(json_data, indent; kw...)
 end
 
 """
@@ -30,7 +52,7 @@ end
 Convert AbstractParameters to dictionary
 """
 function par2dict(par::AbstractParameters)
-    dct = Dict()
+    dct = OrderedCollections.OrderedDict()
     return par2dict!(par, dct)
 end
 
@@ -43,7 +65,7 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
     for field in keys(par)
         parameter = getfield(par, field)
         if typeof(parameter) <: AbstractParameters
-            dct[field] = Dict()
+            dct[field] = OrderedCollections.OrderedDict()
             par2dict!(parameter, dct[field])
         elseif typeof(parameter) <: AbstractParametersVector
             dct[field] = []
@@ -51,7 +73,10 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
         elseif typeof(parameter) <: AbstractParameter
             tp = typeof(parameter).parameters[1]
             value = getfield(parameter, :value)
-            if typeof(value) <: Function
+            if value === missing
+                # dct[field] = missing
+                # pass
+            elseif typeof(value) <: Function
                 # NOTE: For now parameters are saved to JSON not time dependent
                 dct[field] = value(top(par).time.simulation_start)::tp
             elseif tp <: Enum
@@ -68,7 +93,7 @@ end
 
 function par2dict!(par::AbstractParametersVector, vec::AbstractVector)
     for parameter in getfield(par, :_aop)
-        push!(vec, par2dict!(parameter, Dict()))
+        push!(vec, par2dict!(parameter, OrderedCollections.OrderedDict()))
     end
 end
 
