@@ -7,7 +7,7 @@ Base.@kwdef mutable struct ParametersVector{T} <: AbstractParametersVector where
     _aop::Vector{T} = Vector{T}()
 end
 
-function eltype(parameters_vector::ParametersVector)
+function Base.eltype(parameters_vector::AbstractParametersVector)
     return typeof(parameters_vector).parameters[1]
 end
 
