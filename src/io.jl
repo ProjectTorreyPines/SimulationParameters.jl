@@ -8,7 +8,7 @@ NOTE: kw arguments are passed to JSON.print
 function par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
     json_string = string(par; kw...)
     open(filename, "w") do io
-        write(io, json_string)
+        return write(io, json_string)
     end
     return json_string
 end
@@ -32,7 +32,9 @@ Loads AbstractParameters from string
 function str2par(jsonString::String, par_data::AbstractParameters)
     json_data = JSON.parse(jsonString; dicttype=OrderedCollections.OrderedDict)
     json_data = replace_colon_strings_to_symbols(json_data)
-    return dict2par!(json_data, par_data)
+    dict2par!(json_data, par_data)
+    setup_parameters!(par_data)
+    return par_data
 end
 
 """
@@ -113,9 +115,8 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
             dict2par!(dct[field], parameter)
         elseif typeof(parameter) <: AbstractParametersVector
             for kk in eachindex(dct[field])
-                aop = getfield(parameter, :_aop)
-                subpar = eltype(aop)()
-                push!(aop, subpar)
+                subpar = eltype(parameter)()
+                push!(parameter, subpar)
                 dict2par!(dct[field][kk], subpar)
             end
         else

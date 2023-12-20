@@ -7,6 +7,16 @@ Base.@kwdef mutable struct ParametersVector{T} <: AbstractParametersVector where
     _aop::Vector{T} = Vector{T}()
 end
 
+function eltype(parameters_vector::ParametersVector)
+    return typeof(parameters_vector).parameters[1]
+end
+
+function Base.push!(parameters_vector::AbstractParametersVector, parameters::AbstractParameters)
+    aop = getfield(parameters_vector, :_aop)
+    setfield!(parameters, :_parent, WeakRef(parameters_vector))
+    push!(aop, parameters)
+end
+
 function setup_parameters!(parameters::AbstractParameters)
     for field in keys(parameters)
         parameter = getfield(parameters, field)
@@ -147,14 +157,14 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         end
         parameter.value = value
 
-    elseif typeof(parameter) <: ParametersVector
+    elseif typeof(parameter) <: AbstractParametersVector
         setfield!(parameters, field, value)
 
     elseif typeof(parameter) <: AbstractParameters
         setfield!(parameters, field, value)
 
     else
-        error("AbstractParameters should only hold other `AbstractParameter`, `AbstractParameters`, or `ParametersVector` types, not `$(typeof(parameter))")
+        error("AbstractParameters should only hold other `AbstractParameter`, `AbstractParameters`, or `AbstractParametersVector` types, not `$(typeof(parameter))")
     end
 
     parameter = getfield(parameters, field)
