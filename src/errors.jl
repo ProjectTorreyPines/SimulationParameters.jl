@@ -18,9 +18,9 @@ function Base.showerror(io::IO, e::NotsetParameterException)
         units = " [$(e.units)]"
     end
     if length(e.options) > 0
-        print(io, "Parameter $(join(e.path,"."))$units is not set. Valid options are $(join(map(repr,e.options),", "))")
+        print(io, "Parameter $(spath(e.path))$units is not set. Valid options are $(join(map(repr,e.options),", "))")
     else
-        print(io, "Parameter $(join(e.path,"."))$units is not set")
+        print(io, "Parameter $(spath(e.path))$units is not set")
     end
 end
 
@@ -36,5 +36,5 @@ function Base.showerror(io::IO, e::BadParameterException)
     if length(replace(e.units, "-" => "")) > 0
         units = " [$(e.units)]"
     end
-    return print(io, "Parameter $(join(e.path,".")) = $(repr(e.value))$units is not one of the valid options $(join(map(repr, e.options),", "))")
+    return print(io, "Parameter $(spath(e.path)) = $(repr(e.value))$units is not one of the valid options $(join(map(repr, e.options),", "))")
 end

@@ -25,27 +25,27 @@ function json2par(filename::AbstractString, par_data::AbstractParameters)
 end
 
 """
-    str2par(jsonString::String, par_data::AbstractParameters)
+    str2par(json_string::String, par_data::AbstractParameters)
 
-Loads AbstractParameters from string
+Loads AbstractParameters from JSON string
 """
-function str2par(jsonString::String, par_data::AbstractParameters)
-    json_data = JSON.parse(jsonString; dicttype=OrderedCollections.OrderedDict)
-    json_data = replace_colon_strings_to_symbols(json_data)
-    dict2par!(json_data, par_data)
+function str2par(json_string::String, par_data::AbstractParameters)
+    data = JSON.parse(json_string; dicttype=OrderedCollections.OrderedDict)
+    data = replace_colon_strings_to_symbols(data)
+    dict2par!(data, par_data)
     setup_parameters!(par_data)
     return par_data
 end
 
 """
-    string(@nospecialize(par::AbstractParameters); kw...)
+    Base.string(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
 
 Returns JSON serialization of AbstractParameters
 """
 function Base.string(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
-    json_data = par2dict(par)
-    json_data = replace_symbols_to_colon_strings(json_data)
-    return JSON.json(json_data, indent; kw...)
+    data = par2dict(par)
+    data = replace_symbols_to_colon_strings(data)
+    return JSON.json(data, indent; kw...)
 end
 
 """
@@ -136,7 +136,7 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                 end
                 setfield!(parameter, :value, tmp)
             catch e
-                @error("reading $(join(path(par),".")).$(field) : $e")
+                @error("reading $(spath(par)).$(field) : $e")
             end
         end
     end

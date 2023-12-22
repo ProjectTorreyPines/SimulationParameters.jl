@@ -25,7 +25,7 @@ function setup_parameters!(parameters::AbstractParameters)
             setfield!(parameter, :_name, field)
         else
             error(
-                "$(join(path(parameters), ".")).$field can only be a subtype of `AbstractParameter`, `AbstractParameters`, `AbstractParametersVector` and not `$(typeof(parameter))`"
+                "$(spath(parameters)).$field can only be a subtype of `AbstractParameter`, `AbstractParameters`, `AbstractParametersVector` and not `$(typeof(parameter))`"
             )
         end
         if typeof(parameter) <: AbstractParameter
@@ -46,7 +46,7 @@ function setup_parameters!(parameters::AbstractParametersVector)
             setfield!(parameter, :_name, Symbol(kk))
             setup_parameters!(parameter)
         else
-            error("$(join(path(parameters), "."))[$kk] can only be a subtype of `AbstractParameters`")
+            error("$(spath(parameters))[$kk] can only be a subtype of `AbstractParameters`")
         end
     end
 end
@@ -73,7 +73,7 @@ function set_new_base!(parameters::AbstractParametersVector)
             setfield!(parameter, :_name, Symbol(kk))
             set_new_base!(parameter)
         else
-            error("$(join(path(parameters), "."))[$kk] can only be a subtype of `AbstractParameters`")
+            error("$(spath(parameters))[$kk] can only be a subtype of `AbstractParameters`")
         end
     end
 end
@@ -214,6 +214,31 @@ function path(parameters::Union{AbstractParameter,AbstractParameters,AbstractPar
     else
         return Symbol[path(parent(parameters)); name(parameters)]
     end
+end
+
+function spath(p::Vector{Symbol})::String
+    integer_pattern = r"^\d+$"
+    pstring = ""
+    for (k,sym) in enumerate(p)
+        str = string(sym)
+        if occursin(integer_pattern, str)
+            pstring *= "[$str]"
+        elseif k == 1
+            pstring *= "$str"
+        else
+            pstring *= ".$str"
+        end
+    end
+    return pstring
+end
+
+"""
+    spath(parameters::Union{AbstractParameter,AbstractParameters})::String
+
+Returns the location in the parameters hierarchy as a string
+"""
+function spath(parameters::Union{AbstractParameter,AbstractParameters,AbstractParametersVector})::String
+    return spath(path(parameters))
 end
 
 """

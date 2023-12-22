@@ -33,8 +33,10 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
         printstyled(io, field; bold=true)
     elseif typeof(par) <: AbstractParameter
         color = parameter_color(par)
-        printstyled(io, "$(field)")
+        printstyled(io, "$(field)"; bold=true)
         M = length("$(field)")
+        printstyled(io, "{$(split(string(typeof(par).parameters[1]),".")[end])}")
+        M += length("{$(split(string(typeof(par).parameters[1]),".")[end])}")
         printstyled(io, " ➡ ")
         M += 3
         if typeof(par.value) <: AbstractDict
@@ -94,7 +96,9 @@ end
 
 function Base.show(io::IO, p::AbstractParameter)
     color = parameter_color(p)
-    printstyled(io, join(path(p), "."); bold=true, color=color)
+    printstyled(io, spath(p); bold=true, color=color)
+    printstyled(io, "\n- type: "; bold=true)
+    printstyled(io, "$(typeof(p).parameters[1])")
     for item in fieldnames(typeof(p))
         if startswith(string(item), "_")
             continue
@@ -117,10 +121,32 @@ function show_modified(io::IO, pars::AbstractParameters)
             continue
         elseif field.value !== field.default || (field.value == field.default) != true
             printed = true
-            println(io, "$(join(path(field), ".")) = $(repr(field.value))")
+            println(io, "$(spath(field)) = $(repr(field.value))")
         end
     end
     if printed
         println(io, "")
     end
+end
+
+function parameters_details_dict(pars::SimulationParameters.AbstractParameters)
+    data = OrderedCollections.OrderedDict{String,Any}()
+    for leafRepr in AbstractTrees.Leaves(pars)
+        leaf = leafRepr.value
+        if typeof(leaf) <: SimulationParameters.ParametersVector
+            continue
+        end
+        if typeof(leaf) <: SimulationParameters.AbstractParameters
+            continue
+        end
+        data[spath(leaf)] = info = Dict()
+        info["value"] = repr(leaf.value)
+        info["description"] = leaf.description
+        info["type"] = replace(string(typeof(leaf)),"SimulationParameters."=>"")
+        info["units"] = "$(isempty(leaf.units) ? "-" : leaf.units)"
+        if typeof(leaf) <: Switch
+            info["options"] = leaf.options
+        end
+    end
+    return data
 end

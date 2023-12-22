@@ -59,7 +59,7 @@ Plot individual time dependent parameter
         primary := false
         marker := :dot
         markerstrokewidth := 0.0
-        title := join(path(par)[2:end], ".")
+        title := spath(path(par)[2:end])
         titlefontsize := 8
         link := :x
         ylabel := "[$(par.units)]"
