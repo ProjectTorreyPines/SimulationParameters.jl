@@ -32,7 +32,7 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
             pre = " "^depth
         end
         if typeof(parameter) <: AbstractParameters
-            if all(typeof(leaf) <: AbstractParameters || equals_with_missing(getfield(leaf.value, :value), getfield(leaf.value, :default)) for leaf in AbstractTrees.Leaves(parameter))
+            if skip_defaults && all(typeof(leaf) <: AbstractParameters || equals_with_missing(getfield(leaf.value, :value), getfield(leaf.value, :default)) for leaf in AbstractTrees.Leaves(parameter))
                 continue
             else
                 push!(txt, "")
