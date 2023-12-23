@@ -31,8 +31,8 @@ function Base.diff(p1::AbstractParameters, p2::AbstractParameters)
 end
 
 function Base.diff(p1::AbstractParametersVector, p2::AbstractParametersVector)
-    k1 = 1:length(getfield(p1, :_aop))
-    k2 = 1:length(getfield(p2, :_aop))
+    k1 = 1:length(p1)
+    k2 = 1:length(p2)
     commonkeys = intersect(Set(k1), Set(k2))
     if length(commonkeys) != length(k1)
         error("p1 has more elements")

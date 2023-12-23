@@ -1,3 +1,151 @@
+function par2ystr(par::AbstractParameters; show_info::Bool=true, skip_defaults::Bool=false)
+    tmp = par2ystr(par, String[]; show_info, skip_defaults)
+    return join(tmp[2:end], "\n")
+end
+
+function par2ystr(par::AbstractParametersVector, txt::Vector{String}; show_info::Bool=true, skip_defaults::Bool=false)
+    for (k, parameter) in enumerate(par)
+        par2ystr(parameter, txt; is_part_of_array=true, show_info, skip_defaults)
+    end
+end
+
+function equals_with_missing(a, b)
+    if ismissing(a) && ismissing(b)
+        return true
+    elseif ismissing(a) || ismissing(b)
+        return false
+    else
+        return a == b
+    end
+end
+
+function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array::Bool=false, show_info::Bool=true, skip_defaults::Bool=false)
+    for field in keys(par)
+        parameter = getfield(par, field)
+        p = path(parameter)
+        sp = spath(p)
+        depth = (count(".", sp) + count("[", sp) - 1) * 2
+        if is_part_of_array
+            pre = string(" "^(depth - 2), "- ")
+            is_part_of_array = false
+        else
+            pre = " "^depth
+        end
+        if typeof(parameter) <: AbstractParameters
+            if all(typeof(leaf) <: AbstractParameters || equals_with_missing(getfield(leaf.value, :value), getfield(leaf.value, :default)) for leaf in AbstractTrees.Leaves(parameter))
+                continue
+            else
+                push!(txt, "")
+                push!(txt, string(pre, p[end], ":"))
+                par2ystr(parameter, txt; show_info, skip_defaults)
+            end
+
+        elseif typeof(parameter) <: AbstractParametersVector
+            if isempty(parameter)
+                continue
+            end
+            if length(p) == 2
+                push!(txt, "")
+            end
+            push!(txt, string(pre, p[end], ":"))
+            par2ystr(parameter, txt; show_info, skip_defaults)
+
+        elseif typeof(parameter) <: AbstractParameter
+            default = getfield(parameter, :default)
+            value = getfield(parameter, :value)
+            if value === default && skip_defaults
+                continue
+            end
+            tp = typeof(parameter).parameters[1]
+            units = getfield(parameter, :units)
+            if units == "-" || !show_info
+                units = ""
+            else
+                units = "[$units]"
+            end
+            if show_info
+                description = getfield(parameter, :description)
+            else
+                description = ""
+            end
+            if typeof(value) <: Function
+                # NOTE: For now parameters are saved to JSON not time dependent
+                value = value(top(par).time.simulation_start)::tp
+            elseif tp <: Enum
+                value = Int(value)
+            else
+                value = value
+            end
+            extra_info = strip("$units $description")
+            if !isempty(extra_info)
+                extra_info = " # $(extra_info)"
+            end
+            if typeof(value) <: Vector
+                push!(txt, string(pre, p[end], ": ", extra_info))
+                for val in value
+                    push!(txt, string(pre, "  - ", repr(val)))
+                end
+            else
+                push!(txt, string(pre, p[end], ": ", repr(value), extra_info))
+            end
+        else
+            error("par2ystr should not be here")
+        end
+    end
+    return txt
+end
+
+"""
+    par2yaml(@nospecialize(par::AbstractParameters), filename::String; kw...)
+
+Save AbstractParameters to YAML
+
+NOTE: kw arguments are passed to YAML.print
+"""
+function par2yaml(@nospecialize(par::AbstractParameters), filename::String; kw...)
+    yaml_string = par2ystr(par; kw...)
+    open(filename, "w") do io
+        return write(io, yaml_string)
+    end
+    return yaml_string
+end
+
+function Base.string(@nospecialize(par::AbstractParameters); show_info=false, skip_defaults=true)
+    return par2ystr(par; show_info, skip_defaults)
+end
+
+"""
+    ystr2par(yaml_string::String, par_data::AbstractParameters)
+
+Loads AbstractParameters from YAML string
+"""
+function ystr2par(yaml_string::String, par_data::AbstractParameters)
+    # prepend : to all entries since those are all symbols but we don't want the users to put all those :
+    prepend_colon = line -> replace(line, r"\b\w" => s":\g<0>"; count=1)
+    yaml_string = join((prepend_colon(line) for line in split(yaml_string, "\n")), "\n")
+    # replace missing with null
+    missing_null = line -> replace(line, r"\bmissing\b" => "null")
+    yaml_string = join((missing_null(line) for line in split(yaml_string, "\n")), "\n")
+
+    # now parse
+    data = YAML.load(yaml_string; dicttype=OrderedCollections.OrderedDict)
+    data = replace_colon_strings_to_symbols(data)
+    dict2par!(data, par_data)
+    setup_parameters!(par_data)
+    return par_data
+end
+
+"""
+    yaml2par(filename::AbstractString, par_data::AbstractParameters)
+
+Loads AbstractParameters from YAML
+"""
+function yaml2par(filename::AbstractString, par_data::AbstractParameters)
+    open(filename, "r") do io
+        return ystr2par(read(io, String), par_data)
+    end
+end
+
 """
     par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
 
@@ -6,7 +154,7 @@ Save AbstractParameters to JSON
 NOTE: kw arguments are passed to JSON.print
 """
 function par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
-    json_string = string(par; kw...)
+    json_string = par2jstr(par; kw...)
     open(filename, "w") do io
         return write(io, json_string)
     end
@@ -20,16 +168,16 @@ Loads AbstractParameters from JSON
 """
 function json2par(filename::AbstractString, par_data::AbstractParameters)
     open(filename, "r") do io
-        return str2par(read(io, String), par_data)
+        return jstr2par(read(io, String), par_data)
     end
 end
 
 """
-    str2par(json_string::String, par_data::AbstractParameters)
+    jstr2par(json_string::String, par_data::AbstractParameters)
 
 Loads AbstractParameters from JSON string
 """
-function str2par(json_string::String, par_data::AbstractParameters)
+function jstr2par(json_string::String, par_data::AbstractParameters)
     data = JSON.parse(json_string; dicttype=OrderedCollections.OrderedDict)
     data = replace_colon_strings_to_symbols(data)
     dict2par!(data, par_data)
@@ -38,11 +186,11 @@ function str2par(json_string::String, par_data::AbstractParameters)
 end
 
 """
-    Base.string(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
+    par2jstr(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
 
 Returns JSON serialization of AbstractParameters
 """
-function Base.string(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
+function par2jstr(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
     data = par2dict(par)
     data = replace_symbols_to_colon_strings(data)
     return JSON.json(data, indent; kw...)
@@ -94,7 +242,7 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
 end
 
 function par2dict!(par::AbstractParametersVector, vec::AbstractVector)
-    for parameter in getfield(par, :_aop)
+    for parameter in par
         push!(vec, par2dict!(parameter, OrderedCollections.OrderedDict()))
     end
 end
@@ -114,33 +262,48 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
         if typeof(parameter) <: AbstractParameters
             dict2par!(dct[field], parameter)
         elseif typeof(parameter) <: AbstractParametersVector
-            for kk in eachindex(dct[field])
-                subpar = eltype(parameter)()
-                push!(parameter, subpar)
-                dict2par!(dct[field][kk], subpar)
-            end
+            dict2par!(dct[field], parameter)
         else
             tp = typeof(parameter).parameters[1]
-            tmp = dct[field]
-            try
-                if tmp === nothing
-                    tmp = missing
+            value = dct[field]
+            # try
+                if value === nothing
+                    value = missing
+                elseif tp <: AbstractRange
+                    parts = split(value, ":")
+                    start = parse(Float64, parts[1])
+                    step = parse(Float64, parts[2])
+                    stop = parse(Float64, parts[3])
+                    value = start:step:stop
                 elseif tp <: Enum
-                    tmp = tp(tmp)
-                elseif typeof(tmp) <: AbstractVector
-                    if !isempty(tmp)
-                        tmp = eltype(tp).(tmp)
+                    value = tp(value)
+                elseif typeof(value) <: AbstractVector
+                    if !isempty(value)
+                        value = eltype(tp).(value)
                     else
-                        tmp = Vector{eltype(tp)}()
+                        value = Vector{eltype(tp)}()
                     end
                 end
-                setfield!(parameter, :value, tmp)
-            catch e
-                @error("reading $(spath(par)).$(field) : $e")
-            end
+            # catch e
+            #     @error("converting $(spath(par)).$(field) : $e")
+            # end
+
+            # try
+                setfield!(parameter, :value, value)
+            # catch e
+            #     @error("assigning $(spath(par)).$(field) : $e")
+            # end
         end
     end
     return par
+end
+
+function dict2par!(vec::AbstractVector, par::AbstractParametersVector)
+    for kk in eachindex(vec)
+        subpar = eltype(par)()
+        push!(par, subpar)
+        dict2par!(vec[kk], subpar)
+    end
 end
 
 """

@@ -14,8 +14,7 @@ end
 function AbstractTrees.children(node_value::ParsNodeRepr)
     value = node_value.value
     if typeof(value) <: AbstractParametersVector
-        aop = getfield(value, :_aop)
-        return (ParsNodeRepr(k, aop[k]) for k in eachindex(aop))
+        return (ParsNodeRepr(k, value[k]) for k in eachindex(value))
     elseif typeof(value) <: AbstractParameters
         return (ParsNodeRepr(field, getfield(value, field)) for field in keys(value))
     else

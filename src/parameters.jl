@@ -1,7 +1,8 @@
 abstract type AbstractParameters end
-abstract type AbstractParametersVector end
 
-Base.@kwdef mutable struct ParametersVector{T} <: AbstractParametersVector where {T<:AbstractParameters}
+abstract type AbstractParametersVector{T} <: AbstractVector{T} end
+
+Base.@kwdef mutable struct ParametersVector{T<:AbstractParameters} <: AbstractParametersVector{T}
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = Symbol("[]")
     _aop::Vector{T} = Vector{T}()
@@ -11,10 +12,26 @@ function Base.eltype(parameters_vector::AbstractParametersVector)
     return typeof(parameters_vector).parameters[1]
 end
 
+for method in [:length, :size, :getindex, :pop!, :iterate]
+    eval(quote
+        function Base.$method(pv::AbstractParametersVector, args...; kw...)
+            $method(pv._aop, args...; kw...)
+        end
+    end)
+end
+
 function Base.push!(parameters_vector::AbstractParametersVector, parameters::AbstractParameters)
     aop = getfield(parameters_vector, :_aop)
     setfield!(parameters, :_parent, WeakRef(parameters_vector))
+    setfield!(parameters, :_name, Symbol(length(parameters_vector)))
     push!(aop, parameters)
+end
+
+function Base.setindex!(parameters_vector::AbstractParametersVector, index::Int, parameters::AbstractParameters)
+    aop = getfield(parameters_vector, :_aop)
+    setfield!(parameters, :_parent, WeakRef(parameters_vector))
+    setfield!(parameters, :_name, Symbol(index))
+    setindex!(aop, index, parameters)
 end
 
 function setup_parameters!(parameters::AbstractParameters)
@@ -39,8 +56,7 @@ function setup_parameters!(parameters::AbstractParameters)
 end
 
 function setup_parameters!(parameters::AbstractParametersVector)
-    aop = getfield(parameters, :_aop)
-    for (kk, parameter) in enumerate(aop)
+    for (kk, parameter) in enumerate(parameters)
         if typeof(parameter) <: AbstractParameters
             setfield!(parameter, :_parent, WeakRef(parameters))
             setfield!(parameter, :_name, Symbol(kk))
@@ -66,8 +82,7 @@ function set_new_base!(parameters::AbstractParameters)
 end
 
 function set_new_base!(parameters::AbstractParametersVector)
-    aop = getfield(parameters, :_aop)
-    for (kk, parameter) in enumerate(aop)
+    for (kk, parameter) in enumerate(parameters)
         if typeof(parameter) <: AbstractParameters
             setfield!(parameter, :_parent, WeakRef(parameters))
             setfield!(parameter, :_name, Symbol(kk))
@@ -89,7 +104,7 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
     if typeof(parameter) <: AbstractParameters
         return parameter
     elseif typeof(parameter) <: AbstractParametersVector
-        return getfield(parameter, :_aop)
+        return parameter
     else
         if parameter.value === missing
             if typeof(parameter) <: Entry
@@ -216,6 +231,10 @@ function path(parameters::Union{AbstractParameter,AbstractParameters,AbstractPar
     end
 end
 
+function path(parameters::Vector{<:AbstractParameters})::Vector{Symbol}
+    return path(parent(parameters[1]))
+end
+
 function spath(p::Vector{Symbol})::String
     integer_pattern = r"^\d+$"
     pstring = ""
@@ -258,7 +277,7 @@ function leaves!(pars::AbstractParameters, res::Vector{AbstractParameter})
         if typeof(par) <: AbstractParameters
             leaves!(par, res)
         elseif typeof(par) <: AbstractParametersVector
-            for p in getfield(par, :_aop)
+            for p in par
                 leaves!(p, res)
             end
         else

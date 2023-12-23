@@ -88,9 +88,8 @@ function opt_parameters(parameters::AbstractParameters, optimization_vector::Vec
         if typeof(parameter) <: AbstractParameters
             opt_parameters(parameter, optimization_vector)
         elseif typeof(parameter) <: AbstractParametersVector
-            aop = getfield(parameter, :_aop)
-            for kk in aop
-                opt_parameters(aop[kk], optimization_vector)
+            for kk in parameter
+                opt_parameters(parameter[kk], optimization_vector)
             end
         elseif typeof(parameter.opt) <: OptParameter
             push!(optimization_vector, parameter)
@@ -115,7 +114,7 @@ function parameters_from_opt!(parameters::AbstractParameters, optimization_value
         if typeof(parameter) <: AbstractParameters
             _, k = parameters_from_opt!(parameter, optimization_values, k)
         elseif typeof(parameter) <: AbstractParametersVector
-            for kk in eachindex(getfield(parameter, :_aop))
+            for kk in eachindex(parameter)
                 _, k = parameters_from_opt!(parameter[kk], optimization_values, k)
             end
         elseif typeof(parameter.opt) <: OptParameter

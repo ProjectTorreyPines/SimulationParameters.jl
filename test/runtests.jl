@@ -210,13 +210,23 @@ end
     ini.equilibrium.R0 = 1000.0
 
     # equivalent of save to JSON without going to file
-    json_data = par2dict(ini)
-    json_data = SimulationParameters.replace_symbols_to_colon_strings(json_data)
+    json_string = par2jstr(ini)
 
     # equivalent of load from JSON without loading from file
-    json_data = SimulationParameters.replace_colon_strings_to_symbols(json_data)
-    ini2 = ParametersInits()
-    dict2par!(json_data, ini2)
+    ini2 = jstr2par(json_string, ParametersInits())
+
+    @test diff(ini, ini2) === false
+end
+
+@testset "yaml_save_load" begin
+    ini = ParametersInits()
+    ini.equilibrium.R0 = 1000.0
+
+    # equivalent of save to YAML without going to file
+    yaml_string = par2ystr(ini)
+
+    # equivalent of load from YAML without loading from file
+    ini2 = ystr2par(yaml_string, ParametersInits())
 
     @test diff(ini, ini2) === false
 end
