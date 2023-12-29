@@ -89,6 +89,9 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
             end
             if show_info
                 description = getfield(parameter, :description)
+                if typeof(parameter) <: Switch
+                    description = description * " $([k for k in keys(parameter.options)])"
+                end
             else
                 description = ""
             end
