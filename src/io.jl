@@ -19,6 +19,27 @@ function equals_with_missing(a, b)
     end
 end
 
+function YAML._print(io::IO, val::Missing, level::Int=0, ignore_level::Bool=false)
+    return println(io, "~")
+end
+
+function YAML._print(io::IO, val::Symbol, level::Int=0, ignore_level::Bool=false)
+    return println(io, ":$val")
+end
+
+function YAML._print(io::IO, val::AbstractRange, level::Int=0, ignore_level::Bool=false)
+    return println(io, "$(Float64(val.offset)):$(Float64(val.step)):$(Float64(val.offset+val.len))")
+end
+
+function YAML._print(io::IO, val::Enum, level::Int=0, ignore_level::Bool=false)
+    str_enum = string(val)
+    if match(r"^_.*_$", str_enum) !== nothing
+        println(io, ":$(str_enum[2:end-1])")
+    else
+        println(io, str_enum)
+    end
+end
+
 function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array::Bool=false, show_info::Bool=true, skip_defaults::Bool=false)
     for field in keys(par)
         parameter = getfield(par, field)
@@ -32,7 +53,10 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
             pre = " "^depth
         end
         if typeof(parameter) <: AbstractParameters
-            if skip_defaults && all(typeof(leaf) <: AbstractParameters || equals_with_missing(getfield(leaf.value, :value), getfield(leaf.value, :default)) for leaf in AbstractTrees.Leaves(parameter))
+            if skip_defaults && all(
+                !(typeof(leaf) <: ParsNodeRepr) || !(typeof(leaf.value) <: AbstractParameter) || equals_with_missing(getfield(leaf.value, :value), getfield(leaf.value, :default))
+                for leaf in AbstractTrees.Leaves(parameter)
+            )
                 continue
             else
                 push!(txt, "")
@@ -71,22 +95,22 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
             if typeof(value) <: Function
                 # NOTE: For now parameters are saved to JSON not time dependent
                 value = value(top(par).time.simulation_start)::tp
-            elseif tp <: Enum
-                value = Int(value)
-            else
-                value = value
             end
+
             extra_info = strip("$units $description")
             if !isempty(extra_info)
                 extra_info = " # $(extra_info)"
             end
-            if typeof(value) <: Vector
+
+            vrepr = rstrip(YAML.write(value), '\n')
+
+            if contains(vrepr, "\n")
                 push!(txt, string(pre, p[end], ": ", extra_info))
-                for val in value
-                    push!(txt, string(pre, "  - ", repr(val)))
+                for linerep in split(vrepr, "\n")
+                    push!(txt, string(pre, linerep))
                 end
             else
-                push!(txt, string(pre, p[end], ": ", repr(value), extra_info))
+                push!(txt, string(pre, p[end], ": ", vrepr, extra_info))
             end
         else
             error("par2ystr should not be here")
@@ -120,9 +144,10 @@ end
 Loads AbstractParameters from YAML string
 """
 function ystr2par(yaml_string::String, par_data::AbstractParameters)
-    # prepend : to all entries since those are all symbols but we don't want the users to put all those :
-    prepend_colon = line -> replace(line, r"\b\w" => s":\g<0>"; count=1)
-    yaml_string = join((prepend_colon(line) for line in split(yaml_string, "\n")), "\n")
+    if isempty(yaml_string)
+        return par_data
+    end
+
     # replace missing with null
     missing_null = line -> replace(line, r"\bmissing\b" => "null")
     yaml_string = join((missing_null(line) for line in split(yaml_string, "\n")), "\n")
@@ -266,7 +291,9 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
         else
             tp = typeof(parameter).parameters[1]
             value = dct[field]
-            # try
+            if tp <: Enum
+                setproperty!(par, field, value)
+            else
                 if value === nothing
                     value = missing
                 elseif tp <: AbstractRange
@@ -275,8 +302,6 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                     step = parse(Float64, parts[2])
                     stop = parse(Float64, parts[3])
                     value = start:step:stop
-                elseif tp <: Enum
-                    value = tp(value)
                 elseif typeof(value) <: AbstractVector
                     if !isempty(value)
                         value = eltype(tp).(value)
@@ -284,15 +309,8 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                         value = Vector{eltype(tp)}()
                     end
                 end
-            # catch e
-            #     @error("converting $(spath(par)).$(field) : $e")
-            # end
-
-            # try
                 setfield!(parameter, :value, value)
-            # catch e
-            #     @error("assigning $(spath(par)).$(field) : $e")
-            # end
+            end
         end
     end
     return par
@@ -335,12 +353,13 @@ end
     replace_colon_strings_to_symbols(obj::Any)
 
 Recursively converts all strings preceeded by column `:` to Symbol
+Assumes that keys in dictionary are always symbols
 
 NOTE: does not modify the original obj but insteady makes a copy of the data
 """
 function replace_colon_strings_to_symbols(obj::Any)
     if isa(obj, AbstractDict)
-        kk = [isa(k, String) && startswith(k, ":") ? Symbol(lstrip(k, ':')) : k for k in keys(obj)]
+        kk = [isa(k, String) ? Symbol(lstrip(k, ':')) : k for k in keys(obj)]
         vv = [isa(v, String) && startswith(v, ":") ? Symbol(lstrip(v, ':')) : replace_colon_strings_to_symbols(v) for v in values(obj)]
         return typeof(obj).name.wrapper(zip(kk, vv))
     elseif isa(obj, AbstractVector)

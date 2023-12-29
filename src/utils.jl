@@ -23,7 +23,7 @@ function Base.diff(p1::AbstractParameters, p2::AbstractParameters)
             diff(v1, v2)
         elseif typeof(v1.value) === typeof(v2.value) === Missing
             continue
-        elseif v1.value != v2.value
+        elseif !equals_with_missing(v1.value, v2.value)
             error("$key had different value:\n$v1\n\n$v2")
         end
     end

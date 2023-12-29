@@ -29,7 +29,8 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit wher
         ], "myunits", "Initialize run from")
     dict_option::Switch{Int} = Switch{Int}(options, "-", "My switch with SwitchOption")
     a_symbol::Entry{Symbol} = Entry{Symbol}("-", "something"; default=:hello)
-    a_vector_symbol::Entry{Vector{Symbol}} = Entry{Vector{Symbol}}("-", "something vector"; default=[:hello, :world])
+    a_vector_symbol::Entry{Vector{Symbol}} = Entry{Vector{Symbol}}("-", "something symbol vector"; default=[:hello, :world])
+    b_vector_float::Entry{Vector{Float64}} = Entry{Vector{Float64}}("-", "something float64 vector"; default=[0.1, 0.2, 0.3])
     v_params::ParametersVector{FUSEparameters__ece{T}} = ParametersVector{FUSEparameters__ece{T}}()
 end
 

@@ -7,8 +7,8 @@ function AbstractTrees.printnode(io::IO, pars::AbstractParameters)
     return printstyled(io, split(string(typeof(pars)), "__")[end]; bold=true)
 end
 
-function AbstractTrees.children(pars::AbstractParameters)::Vector{ParsNodeRepr}
-    return [ParsNodeRepr(field, getfield(pars, field)) for field in collect(keys(pars))]
+function AbstractTrees.children(pars::AbstractParameters)
+    return (ParsNodeRepr(field, getfield(pars, field)) for field in keys(pars))
 end
 
 function AbstractTrees.children(node_value::ParsNodeRepr)
@@ -141,7 +141,7 @@ function parameters_details_dict(pars::SimulationParameters.AbstractParameters)
         data[spath(leaf)] = info = Dict()
         info["value"] = repr(leaf.value)
         info["description"] = leaf.description
-        info["type"] = replace(string(typeof(leaf)),"SimulationParameters."=>"")
+        info["type"] = replace(string(typeof(leaf)), "SimulationParameters." => "")
         info["units"] = "$(isempty(leaf.units) ? "-" : leaf.units)"
         if typeof(leaf) <: Switch
             info["options"] = leaf.options
