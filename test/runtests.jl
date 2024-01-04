@@ -19,7 +19,7 @@ end
 Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Real}
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = :equilibrium
-    R0::Entry{T} = Entry{T}("m", "Geometric genter of the plasma. NOTE: This also scales the radial build layers.")
+    R0::Entry{T} = Entry{T}("m", "Geometric genter of the plasma. NOTE: This also scales the radial build layers."; check=x -> (@assert x > 0 "R0 must be >0"))
     casename::Entry{String} = Entry{String}("-", "Mnemonic name of the case being run")
     init_from::Switch{Symbol} = Switch{Symbol}(
         [
@@ -186,7 +186,7 @@ end
 
 @testset "deepcopy" begin
     ini = ParametersInits()
-    ini.equilibrium.R0 = 0.0
+    ini.equilibrium.R0 = 0.1
     @test parent(ini.equilibrium) == ini
 
     ini_eq = deepcopy(ini.equilibrium)
@@ -195,7 +195,7 @@ end
     ini_eq.R0 = 1.0
 
     # make sure that value change of the copy does not affect the original value
-    @test ini.equilibrium.R0 == 0.0
+    @test ini.equilibrium.R0 == 0.1
 
     # assign the copy to the original ini
     ini.equilibrium = ini_eq
@@ -230,6 +230,13 @@ end
     ini2 = ystr2par(yaml_string, ParametersInits())
 
     @test diff(ini, ini2) === false
+end
+
+@testset "checks" begin
+    ini = ParametersInits()
+    @test (ini.equilibrium.R0 = 1.0) === 1.0
+    @test_throws AssertionError ini.equilibrium.R0 = -5.0
+    @test (ini.equilibrium.R0 = missing) === missing
 end
 
 @testset "concrete_types" begin

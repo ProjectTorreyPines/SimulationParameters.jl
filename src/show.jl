@@ -80,6 +80,10 @@ function Base.show(io::IO, ::MIME"text/plain", pars::AbstractParameters, depth::
     return AbstractTrees.print_tree(io, pars)
 end
 
+function Base.show(io::IO, pars::AbstractParameters, depth::Int=0)
+    return spath(pars)
+end
+
 function parameter_color(p::AbstractParameter)::Symbol
     value = p.value
     if value === missing

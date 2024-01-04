@@ -15,7 +15,7 @@ end
 for method in [:length, :size, :getindex, :pop!, :iterate]
     eval(quote
         function Base.$method(pv::AbstractParametersVector, args...; kw...)
-            $method(pv._aop, args...; kw...)
+            return $method(pv._aop, args...; kw...)
         end
     end)
 end
@@ -24,14 +24,14 @@ function Base.push!(parameters_vector::AbstractParametersVector, parameters::Abs
     aop = getfield(parameters_vector, :_aop)
     setfield!(parameters, :_parent, WeakRef(parameters_vector))
     setfield!(parameters, :_name, Symbol(length(parameters_vector)))
-    push!(aop, parameters)
+    return push!(aop, parameters)
 end
 
 function Base.setindex!(parameters_vector::AbstractParametersVector, index::Int, parameters::AbstractParameters)
     aop = getfield(parameters_vector, :_aop)
     setfield!(parameters, :_parent, WeakRef(parameters_vector))
     setfield!(parameters, :_name, Symbol(index))
-    setindex!(aop, index, parameters)
+    return setindex!(aop, index, parameters)
 end
 
 function setup_parameters!(parameters::AbstractParameters)
@@ -170,6 +170,11 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         else
             setfield!(parameter, :opt, missing)
         end
+
+        if !ismissing(value) && !isnothing(parameter.check)
+            parameter.check(value)
+        end
+
         parameter.value = value
 
     elseif typeof(parameter) <: AbstractParametersVector
@@ -238,7 +243,7 @@ end
 function spath(p::Vector{Symbol})::String
     integer_pattern = r"^\d+$"
     pstring = ""
-    for (k,sym) in enumerate(p)
+    for (k, sym) in enumerate(p)
         str = string(sym)
         if occursin(integer_pattern, str)
             pstring *= "[$str]"

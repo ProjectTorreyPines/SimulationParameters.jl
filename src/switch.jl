@@ -13,6 +13,7 @@ mutable struct Switch{T} <: AbstractParameter
     base::Union{Missing,Function,T}
     default::Union{Missing,Function,T}
     opt::Union{Missing,OptParameter}
+    check::Union{Nothing,Function}
 end
 
 """
@@ -28,7 +29,7 @@ function Switch{T}(options::AbstractDict{<:Any,SwitchOption}, units::String, des
     else
         error("$description\n$(repr(default)) is not a valid option: $(collect(keys(options)))")
     end
-    return Switch{T}(:not_set, WeakRef(nothing), options, units_check(units, description), description, default_value, default_value, default_value, missing)
+    return Switch{T}(:not_set, WeakRef(nothing), options, units_check(units, description), description, default_value, default_value, default_value, missing, nothing)
 end
 
 function Switch{T}(options::Vector{Pair{Symbol,String}}, units::String, description::String; default=missing) where {T}
