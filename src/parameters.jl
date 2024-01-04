@@ -117,7 +117,11 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
         else
             tp = typeof(parameter).parameters[1]
             if typeof(parameter.value) <: Function
-                return parameter.value(top(parameters).time.simulation_start)::tp
+                value = parameter.value(top(parameters).time.simulation_start)
+                if !ismissing(value) && !isnothing(parameter.check) && !(typeof(value) <: Function)
+                    parameter.check(value)
+                end
+                return value::tp
             else
                 return parameter.value::tp
             end
@@ -171,7 +175,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
             setfield!(parameter, :opt, missing)
         end
 
-        if !ismissing(value) && !isnothing(parameter.check)
+        if !ismissing(value) && !isnothing(parameter.check) && !(typeof(value) <: Function)
             parameter.check(value)
         end
 
