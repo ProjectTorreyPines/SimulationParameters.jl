@@ -92,6 +92,7 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
                 if typeof(parameter) <: Switch
                     description = description * " $([k for k in keys(parameter.options)])"
                 end
+                description = replace(description, "\n" => "\\n")
             else
                 description = ""
             end
@@ -107,7 +108,7 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
 
             vrepr = rstrip(YAML.write(value), '\n')
 
-            if contains(vrepr, "\n")
+            if contains(vrepr, "\n") || (startswith(vrepr, "- ") && typeof(value) <: AbstractArray && length(value) == 1)
                 push!(txt, string(pre, p[end], ": ", extra_info))
                 for linerep in split(vrepr, "\n")
                     push!(txt, string(pre, linerep))
