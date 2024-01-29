@@ -53,7 +53,12 @@ Plot individual time dependent parameter
         yticks := yticks
         time_range, time_data
     end
-
+    if par.opt !== missing
+        @series begin
+            primary := false
+            par.opt
+        end
+    end
     @series begin
         seriestype := :scatter
         primary := false

@@ -204,9 +204,9 @@ function (opt::OptParameterFunction)(t0::Vector{T}, v0::Vector{T}; clip::Bool=fa
     @assert all(-1.0 .<= v0 .<= 1.0) "v0=$v0 but it should be -1.0 .<= v0 .<= 1.0"
 
     t = t0 .* (opt.t_range[2] .- opt.t_range[1]) .+ opt.t_range[1]
-    fl(t) = opt.nominal(t) + opt.lower(t)
     fu(t) = opt.nominal(t) + opt.upper(t)
-    v = v0 .* fu.(t0) .+ (1.0 .- v0) .* fl.(t0)
+    fl(t) = opt.nominal(t) + opt.lower(t)
+    v = v0 .* fu.(t) .+ (1.0 .- v0) .* fl.(t)
 
     tt = [opt.t_range[1]; t; opt.t_range[2]]
     vv = [opt.nominal(opt.t_range[1]); v; opt.nominal(opt.t_range[2])]
@@ -222,7 +222,7 @@ end
 
 function (opt::OptParameterFunction)(; uniform::Bool=false)
     if uniform
-        t0 = range(0.0, 1.0, opt.nodes + 2)[2:end-1]
+        t0 = collect(range(0.0, 1.0, opt.nodes + 2)[2:end-1])
         v0 = fill(0.0, opt.nodes)
     else
         t0 = sort!(rand(opt.nodes))
