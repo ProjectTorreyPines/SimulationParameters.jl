@@ -363,27 +363,3 @@ function parameters_from_opt!(parameters::AbstractParameters, optimization_value
     end
     return parameters, k
 end
-
-# ======== #
-# plotting #
-# ======== #
-@recipe function plot_opt_function(opt::OptParameterFunction; tt=range(opt.t_range[1], opt.t_range[2], 100), bounds_on_nominal=true)
-    tt0 = tt
-    @series begin
-        tt0, opt.nominal.(tt0)
-    end
-
-    tt = collect(tt)
-    tt[tt.<opt.t_range[1].||tt.>opt.t_range[2]] .= NaN
-    @series begin
-        primary := false
-        alpha := 0.5
-        if bounds_on_nominal
-            fillrange := opt.nominal.(tt) .+ opt.lower.(tt)
-            tt, opt.nominal.(tt) .+ opt.upper.(tt)
-        else
-            fillrange := opt.lower.(tt)
-            tt, opt.upper.(tt)
-        end
-    end
-end
