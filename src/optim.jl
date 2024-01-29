@@ -100,13 +100,13 @@ function float_bounds(opt::OptParameterRange)
         lower = opt.lower
         upper = opt.upper
     end
-    return [lower, upper]
+    return [[lower, upper];;]
 end
 
 function float_bounds(opt::OptParameterChoice)
     lower = 0.5
     upper = length(opt.choices) + 0.5
-    return [lower, upper]
+    return [[lower, upper];;]
 end
 
 function float_bounds(opt::OptParameterFunction)

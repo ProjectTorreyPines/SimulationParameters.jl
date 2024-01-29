@@ -194,7 +194,7 @@ end
     ini.equilibrium.v_params[1].power = 2.5 ↔ [1.2, 2.5]
     opts = opt_parameters(ini)
     @test opts == AbstractParameter[getfield(ini.equilibrium, :R0), getfield(ini.equilibrium.v_params[1], :power)]
-    bounds = SimulationParameters.float_bounds(opts)
+    bounds = float_bounds(opts)
     @test size(bounds) == (2, 7)
 end
 
