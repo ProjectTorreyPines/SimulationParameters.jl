@@ -77,3 +77,39 @@ function encode_array(arr::Vector{<:Any})
 
     return encoded, mapping
 end
+
+function mirror_bound(x::T, l::T, u::T) where {T<:Real}
+    d = (u - l) / 2.0
+    c = (u + l) / 2.0
+    x0 = (x - c) / d
+    while abs(x0) > 1.0
+        if x0 < 1.0
+            x0 = -2.0 - x0
+        else
+            x0 = 2.0 - x0
+        end
+    end
+    return x0 * d + c
+end
+
+function simple_interp1d(x, y, xi::Real)
+    return simple_interp1d(x, y, [xi])[1]
+end
+
+function simple_interp1d(x, y, xi)
+    yi = similar(xi)
+    for (i, xval) in enumerate(xi)
+        if x[1] <= xval <= x[end]
+            for j in 1:length(x)-1
+                if x[j] <= xval <= x[j+1]
+                    fraction = (xval - x[j]) / (x[j+1] - x[j])
+                    yi[i] = y[j] + fraction * (y[j+1] - y[j])
+                    break
+                end
+            end
+        else
+            error("simple_interp1d Outside of interpolation range")
+        end
+    end
+    return yi
+end

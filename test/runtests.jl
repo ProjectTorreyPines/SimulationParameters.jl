@@ -121,6 +121,7 @@ ini
 end
 
 @testset "opt_parameters" begin
+    # float
     ini = ParametersInits()
     ini.equilibrium.R0 = 1.5 ↔ [1.2, 2.5]
     @test ini.equilibrium.R0 == 1.5
@@ -131,9 +132,7 @@ end
     @test_throws ErrorException ini.equilibrium.R0 = 1.0 ↔ [1.2, 2.5]
     @test_throws ErrorException ini.equilibrium.R0 = 3.0 ↔ [1.2, 2.5]
 
-    parameters_from_opt!(ini, [1.3])
-    @test ini.equilibrium.R0 == 1.3
-
+    # int
     ini = ParametersInits{Int}()
     ini.equilibrium.R0 = 2 ↔ [1, 3]
     @test ini.equilibrium.R0 == 2
@@ -144,6 +143,7 @@ end
     @test_throws ErrorException ini.equilibrium.R0 = 0 ↔ [1, 3]
     @test_throws ErrorException ini.equilibrium.R0 = 4 ↔ [1, 3]
 
+    # bool
     ini = ParametersInits{Bool}()
     # boolean as range of bools
     ini.equilibrium.R0 = true ↔ [false, true]
@@ -151,7 +151,6 @@ end
     # boolean as boolean options
     ini.equilibrium.R0 = true ↔ (false, true)
     @test ini.equilibrium.R0 == true
-
     @test_throws ErrorException ini.equilibrium.R0 = -1 ↔ [0, 1]
     @test_throws ErrorException ini.equilibrium.R0 = 2 ↔ [0, 1]
 
@@ -184,6 +183,19 @@ end
     parameters_from_opt!(ini, [2.5, 2.5])
     @test ini.equilibrium.R0 == true
     @test ini.equilibrium.init_from == :scalars
+
+    # with OptParameterFunction
+    ini = ParametersInits(; n_ece=1)
+    ini.time.simulation_start = 2.0
+    ini.equilibrium.R0 = OptParameterFunction(t -> 10 + t, t -> 0.1, 3; t_range=(0.0, 3.0))
+    @test ini.equilibrium.R0 == 12.0 # get the nominal function
+    rand!(ini.equilibrium, :R0)
+    @test ini.equilibrium.R0 != 12.0
+    ini.equilibrium.v_params[1].power = 2.5 ↔ [1.2, 2.5]
+    opts = opt_parameters(ini)
+    @test opts == AbstractParameter[getfield(ini.equilibrium, :R0), getfield(ini.equilibrium.v_params[1], :power)]
+    bounds = SimulationParameters.float_bounds(opts)
+    @test size(bounds) == (2, 7)
 end
 
 @testset "GC_parent" begin
@@ -244,11 +256,12 @@ end
 @testset "checks" begin
     ini = ParametersInits()
 
+    # R0 should always be > 0.0
     @test (ini.equilibrium.R0 = 1.0) === 1.0
     @test_throws AssertionError ini.equilibrium.R0 = -5.0
     @test (ini.equilibrium.R0 = missing) === missing
 
-    # checks on functions are evaluated at retrieval
+    # checks that functions are evaluated at retrieval
     ini.equilibrium.R0 = t -> -5.0
     ini.time.simulation_start = 1.0
     @test_throws AssertionError ini.equilibrium.R0
