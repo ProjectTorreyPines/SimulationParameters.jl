@@ -14,10 +14,10 @@ include("parameters.jl")
 include("io.jl")
 include("utils.jl")
 
+include("optim.jl")
+
 include("show.jl")
 include("plot.jl")
-
-include("optim.jl")
 
 include("errors.jl")
 
