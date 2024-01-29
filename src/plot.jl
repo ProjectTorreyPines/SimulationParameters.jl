@@ -73,6 +73,7 @@ Plot individual time dependent parameter
     @series begin
         xlim := (t_range[1], t_range[end])
         yticks := yticks
+        label --> ""
         t_range, time_data
     end
     if par.opt !== missing
