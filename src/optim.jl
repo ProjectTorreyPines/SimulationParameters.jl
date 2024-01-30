@@ -86,7 +86,7 @@ Returns optimization bounds of a parameter (if it has one)
 """
 function float_bounds(parameter::AbstractParameter)
     if parameter.opt === missing
-        error("$(parameter.name) does not have a optimization range defined")
+        error("$(parameter.name) does not have a optimization defined")
     end
     return float_bounds(parameter.opt)
 end
@@ -117,6 +117,35 @@ function float_bounds(opts::Vector{AbstractParameter})
     return hcat([float_bounds(optpar) for optpar in opts]...)
 end
 
+# ============= #
+# nominal_value #
+# ============= #
+"""
+    nominal_value(parameter::AbstractParameter)
+
+Returns nominal value of an optimization parameter (if it has one)
+"""
+function nominal_value(parameter::AbstractParameter)
+    if parameter.opt === missing
+        error("$(parameter.name) does not have a optimization defined")
+    end
+    return nominal_value(parameter.opt)
+end
+
+function nominal_value(opt::OptParameter)
+    return opt.nominal
+end
+
+function nominal_value(opt::OptParameterFunction)
+    t0 = collect(range(0.0, 1.0, opt.nodes + 2)[2:end-1])
+    v0 = fill(0.0, opt.nodes)
+    return [t0; v0]
+end
+
+function nominal_value(opts::Vector{AbstractParameter})
+    return vcat([nominal_value(optpar) for optpar in opts]...)
+end
+
 # ==== #
 # call #
 # ==== #
@@ -124,8 +153,7 @@ end
 # This is used when running an optimizer. The optimizer generates
 # new values (Float64) for the optimization array.
 # The Float64 then needs to be translated to the proper type
-
-function (opt::OptParameterRange)(X::Vector{Float64})
+function (opt::OptParameterRange)(X::Vector{Float64}; clip::Bool=false, transform::Bool=false)
     @assert length(X) == 1
     x = X[1]
     tp = typeof(opt.nominal)
@@ -144,7 +172,7 @@ function (opt::OptParameterRange)(X::Vector{Float64})
     end
 end
 
-function (opt::OptParameterChoice)(X::Vector{Float64})
+function (opt::OptParameterChoice)(X::Vector{Float64}; clip::Bool=false, transform::Bool=false)
     @assert length(X) == 1
     x = X[1]
     lower, upper = float_bounds(opt)
@@ -340,23 +368,23 @@ end
 
 Unpack a `optimization_values` vector into a high-level `parameters` AbstractParameters
 """
-function parameters_from_opt!(parameters::AbstractParameters, optimization_values::AbstractVector)
-    parameters_from_opt!(parameters, optimization_values, 1)
+function parameters_from_opt!(parameters::AbstractParameters, optimization_values::AbstractVector; transform::Bool=false, clip::Bool=false)
+    parameters_from_opt!(parameters, optimization_values, 1; transform, clip)
     return parameters
 end
 
-function parameters_from_opt!(parameters::AbstractParameters, optimization_values::AbstractVector, k::Int)
+function parameters_from_opt!(parameters::AbstractParameters, optimization_values::AbstractVector, k::Int; transform::Bool, clip::Bool)
     for field in keys(parameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
-            _, k = parameters_from_opt!(parameter, optimization_values, k)
+            _, k = parameters_from_opt!(parameter, optimization_values, k; transform, clip)
         elseif typeof(parameter) <: AbstractParametersVector
             for kk in eachindex(parameter)
-                _, k = parameters_from_opt!(parameter[kk], optimization_values, k)
+                _, k = parameters_from_opt!(parameter[kk], optimization_values, k; transform, clip)
             end
         elseif typeof(parameter.opt) <: OptParameter
             n = parameter.opt.n
-            value = parameter.opt(optimization_values[k:k+n-1])
+            value = parameter.opt(optimization_values[k:k+n-1]; transform, clip)
             setproperty!(parameter, :value, value)
             k += n
         end

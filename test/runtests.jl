@@ -196,6 +196,7 @@ end
     @test opts == AbstractParameter[getfield(ini.equilibrium, :R0), getfield(ini.equilibrium.v_params[1], :power)]
     bounds = float_bounds(opts)
     @test size(bounds) == (2, 7)
+    parameters_from_opt!(ini, [0.3, 0.5, 0.8, 0.0, 0.0, 0.0, 2.0])
 end
 
 @testset "GC_parent" begin
