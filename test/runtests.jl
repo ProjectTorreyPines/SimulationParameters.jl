@@ -5,6 +5,10 @@ using Test
 abstract type ParametersInit <: AbstractParameters end # container for all parameters of a init
 abstract type ParametersAllInits <: AbstractParameters end # --> abstract type of ParametersInits, container for all parameters of all inits
 
+function SimulationParameters.global_time(parameters::ParametersInit)
+    return SimulationParameters.top(parameters).time.simulation_start
+end
+
 options = Dict(
     :1 => SwitchOption(1, "1"),
     :2 => SwitchOption(2, "2"),

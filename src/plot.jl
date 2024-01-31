@@ -52,22 +52,29 @@ end
 end
 
 """
-    plot_par(par::AbstractParameter)
+    plot_par(par::AbstractParameter; time0=global_time(par), t_range=time_range(par))
 
 Plot individual time dependent parameter
 """
-@recipe function plot_par(par::AbstractParameter)
-    time = top(par).time
-    t_range = time.pulse_shedule_time_basis
-    time0 = time.simulation_start
+@recipe function plot_par(par::AbstractParameter; time0=global_time(par), t_range=time_range(par))
+    @assert typeof(time0) <: Float64
+    @assert typeof(t_range) <: Union{AbstractVector{<:Float64},AbstractRange{<:Float64}} "must specify a `t_range=range(...)` to plot $(spath(par))"
+
+    if !(typeof(par.value) <: Function)
+        error("Parameter $(spath(par)) is not defined as a time dependent function")
+    end
 
     time_data = par.value.(t_range)
     if eltype(time_data) <: Number
-        data0 = par.value(time0)
+        if !isnan(time0)
+            data0 = par.value(time0)
+        end
         yticks = :auto
     else
         time_data, mapping = encode_array(time_data)
-        data0 = mapping[par.value(time0)]
+        if !isnan(time0)
+            data0 = mapping[par.value(time0)]
+        end
         yticks = (collect(values(mapping)), collect(keys(mapping)))
     end
     @series begin
@@ -83,17 +90,19 @@ Plot individual time dependent parameter
             par.opt
         end
     end
-    @series begin
-        seriestype := :scatter
-        primary := false
-        marker := :dot
-        markerstrokewidth := 0.0
-        title := spath(path(par)[2:end])
-        titlefontsize := 8
-        link := :x
-        ylabel := "[$(par.units)]"
-        xlabel := "[s]"
-        yticks := yticks
-        [time0], [data0]
+    if !isnan(time0)
+        @series begin
+            seriestype := :scatter
+            primary := false
+            marker := :dot
+            markerstrokewidth := 0.0
+            title := spath(path(par)[2:end])
+            titlefontsize := 8
+            link := :x
+            ylabel := "[$(par.units)]"
+            xlabel := "[s]"
+            yticks := yticks
+            [time0], [data0]
+        end
     end
 end
