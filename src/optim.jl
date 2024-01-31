@@ -9,15 +9,6 @@ struct OptParameterRange{T} <: OptParameter where {T<:Real}
     choices::Missing
 end
 
-function OptParameterRange(nominal::T, lower::T, upper::T) where {T}
-    if nominal < lower
-        error("Optimization parameter: nominal value < lower bound")
-    elseif nominal > upper
-        error("Optimization parameter: nominal value > lower bound")
-    end
-    return OptParameterRange(nominal, lower, upper, 1, missing)
-end
-
 """
     ↔(x::Real, r::AbstractVector)
 
@@ -27,6 +18,15 @@ function ↔(x::Real, r::AbstractVector)
     @assert length(r) == 2
     @assert typeof(x) === typeof(r[1]) === typeof(r[2]) "OptParameterRange `P ↔ [L, U]` must have the same type for `P`, `L`, and `U`"
     return OptParameterRange(x, r[1], r[2])
+end
+
+function OptParameterRange(nominal::T, lower::T, upper::T) where {T}
+    if nominal < lower
+        error("Optimization parameter: nominal value < lower bound")
+    elseif nominal > upper
+        error("Optimization parameter: nominal value > lower bound")
+    end
+    return OptParameterRange(nominal, lower, upper, 1, missing)
 end
 
 # ================== #
@@ -67,13 +67,37 @@ struct OptParameterFunction <: OptParameter
     choices::Missing
 end
 
-function OptParameterFunction(nominal::Function, lower::Function, upper::Function, nodes::Int; t_range::Tuple{Float64,Float64})
+"""
+    ↔(x::Real, r::AbstractVector)
+
+"leftrightarrow" unicode constructor for OptParameterFunction
+"""
+function ↔(x::Function, r::NamedTuple)
+    return OptParameterFunction(x, r...)
+end
+
+function ↔(x::Function, r::Tuple)
+    return OptParameterFunction(x, r...)
+end
+
+function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, lower::Function, upper::Function)
     n = nodes * 2
     return OptParameterFunction(nominal, lower, upper, t_range, n, nodes, missing)
 end
 
-function OptParameterFunction(nominal::Function, bounds::Function, nodes::Int; t_range::Tuple{Float64,Float64})
-    return OptParameterFunction(nominal, t -> -bounds(t), bounds, nodes; t_range)
+function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, bounds::Function)
+    return OptParameterFunction(nominal, nodes, t_range, t -> -bounds(t), bounds)
+end
+
+function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, v_range::Tuple{Float64,Float64})
+    u_bound(t) = -(nominal(t) - v_range[2])
+    l_bound(t) = (v_range[1] - nominal(t))
+    return OptParameterFunction(nominal, nodes, t_range, u_bound, l_bound)
+end
+
+function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64})
+    v_range = (nominal(t_range[1]), nominal(t_range[2]))
+    return OptParameterFunction(nominal, nodes, t_range, v_range)
 end
 
 # ============ #

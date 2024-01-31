@@ -187,7 +187,7 @@ end
     # with OptParameterFunction
     ini = ParametersInits(; n_ece=1)
     ini.time.simulation_start = 2.0
-    ini.equilibrium.R0 = OptParameterFunction(t -> 10 + t, t -> 0.1, 3; t_range=(0.0, 3.0))
+    ini.equilibrium.R0 = (t -> 10 + t) ↔ (nodes=3, t_range=(0.0, 3.0), bounds=t -> 0.1)
     @test ini.equilibrium.R0 == 12.0 # get the nominal function
     rand!(ini.equilibrium, :R0)
     @test ini.equilibrium.R0 != 12.0

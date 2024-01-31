@@ -6,17 +6,21 @@ import JSON
 import YAML
 
 include("parameter.jl")
+
 include("entry.jl")
+
 include("switch.jl")
 
 include("parameters.jl")
 
 include("io.jl")
+
 include("utils.jl")
 
 include("optim.jl")
 
 include("show.jl")
+
 include("plot.jl")
 
 include("errors.jl")
@@ -30,7 +34,7 @@ export par2ystr, ystr2par
 export par2json, json2par
 export par2yaml, yaml2par
 export show_modified
-export OptParameter, OptParameterFunction, ↔, opt_parameters, parameters_from_opt!, rand, rand!, float_bounds, nominal_value
+export OptParameter, ↔, opt_parameters, parameters_from_opt!, rand, rand!, float_bounds, nominal_value
 export InexistentParameterException, NotsetParameterException, BadParameterException
 
 end # module SimulationParameters
