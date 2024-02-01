@@ -98,7 +98,8 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
             end
             if typeof(value) <: Function
                 # NOTE: For now parameters are saved to JSON not time dependent
-                value = value(top(par).time.simulation_start)::tp
+                time = global_time(par)
+                value = value(time)::tp
             end
 
             extra_info = strip("$units $description")
@@ -257,7 +258,8 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
                 # pass
             elseif typeof(value) <: Function
                 # NOTE: For now parameters are saved to JSON not time dependent
-                dct[field] = value(top(par).time.simulation_start)::tp
+                time = global_time(par)
+                dct[field] = value(time)::tp
             elseif tp <: Enum
                 dct[field] = Int(value)
             else

@@ -51,6 +51,8 @@ function setup_parameters!(parameters::AbstractParameters)
             setup_parameters!(parameter)
         elseif typeof(parameter) <: AbstractParametersVector
             setup_parameters!(parameter)
+        else
+            error("setup_parameters! should not be here")
         end
     end
 end
@@ -117,7 +119,8 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
         else
             tp = typeof(parameter).parameters[1]
             if typeof(parameter.value) <: Function
-                value = parameter.value(top(parameters).time.simulation_start)
+                time = global_time(parameters)
+                value = parameter.value(time)
                 if !ismissing(value) && !isnothing(parameter.check) && !(typeof(value) <: Function)
                     parameter.check(value)
                 end
@@ -199,11 +202,11 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
 end
 
 function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})
-    return (field for field in fieldnames(typeof(parameters)) if field ∉ (:_parent, :_name))
+    return (field for field in fieldnames(typeof(parameters)) if string(field)[1] != '_')
 end
 
 function Base.values(parameters::Union{AbstractParameter,AbstractParameters})
-    return (getfield(parameters, field) for field in fieldnames(typeof(parameters)) if field ∉ (:_parent, :_name))
+    return (getfield(parameters, field) for field in fieldnames(typeof(parameters)) if string(field)[1] != '_')
 end
 
 function Base.parent(parameters::Union{AbstractParameter,AbstractParameters,AbstractParametersVector})
@@ -313,4 +316,23 @@ function (par::AbstractParameters)(kw...)
     end
     setfield!(par_copy, :_parent, getfield(par, :_parent))
     return par_copy
+end
+
+# ==== #
+# time #
+# ==== #
+function global_time(pars::AbstractParameters)
+    return error("`global_time(::$(typeof(pars)))` is not defined")
+end
+
+function global_time(par::AbstractParameter)
+    return global_time(parent(par))
+end
+
+function time_range(pars::AbstractParameters)
+    return error("`time_range(::$(typeof(pars)))` is not defined")
+end
+
+function time_range(par::AbstractParameter)
+    return time_range(parent(par))
 end
