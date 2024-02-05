@@ -1,4 +1,4 @@
-mutable struct Entry{T} <: AbstractParameter
+mutable struct Entry{T} <: AbstractParameter{T}
     _name::Symbol
     _parent::WeakRef
     units::String

@@ -1,4 +1,4 @@
-abstract type AbstractParameters end
+abstract type AbstractParameters{T} end
 
 abstract type AbstractParametersVector{T} <: AbstractVector{T} end
 

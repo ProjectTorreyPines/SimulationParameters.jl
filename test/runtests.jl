@@ -2,8 +2,8 @@ using SimulationParameters
 import InteractiveUtils
 using Test
 
-abstract type ParametersInit <: AbstractParameters end # container for all parameters of a init
-abstract type ParametersAllInits <: AbstractParameters end # --> abstract type of ParametersInits, container for all parameters of all inits
+abstract type ParametersInit{T} <: AbstractParameters{T} end # container for all parameters of a init
+abstract type ParametersAllInits{T} <: AbstractParameters{T} end # --> abstract type of ParametersInits, container for all parameters of all inits
 
 function SimulationParameters.global_time(parameters::ParametersInit)
     return SimulationParameters.top(parameters).time.simulation_start
@@ -14,20 +14,20 @@ options = Dict(
     :2 => SwitchOption(2, "2"),
     :3 => SwitchOption(3, "3"))
 
-Base.@kwdef mutable struct FUSEparameters__ece{T} <: ParametersInit where {T<:Real}
+Base.@kwdef mutable struct FUSEparameters__ece{T<:Real} <: ParametersInit{T}
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = :ece
     power::Entry{T} = Entry{T}("W", "launched power")
 end
 
-Base.@kwdef mutable struct FUSEparameters__time{T} <: ParametersInit where {T<:Real}
+Base.@kwdef mutable struct FUSEparameters__time{T<:Real} <: ParametersInit{T}
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = :time
     pulse_shedule_time_basis::Entry{AbstractRange{Float64}} = Entry{AbstractRange{Float64}}("s", "Time basis used to discretize the pulse schedule")
     simulation_start::Entry{Float64} = Entry{Float64}("s", "Time at which the simulation starts"; default=0.0)
 end
 
-Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit where {T<:Real}
+Base.@kwdef mutable struct FUSEparameters__equilibrium{T<:Real} <: ParametersInit{T}
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = :equilibrium
     R0::Entry{T} = Entry{T}("m", "Geometric center of the plasma"; check=x -> (@assert x > 0 "R0 must be >0"))
@@ -45,7 +45,7 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T} <: ParametersInit wher
     v_params::ParametersVector{FUSEparameters__ece{T}} = ParametersVector{FUSEparameters__ece{T}}()
 end
 
-mutable struct ParametersInits{T} <: ParametersAllInits where {T<:Real}
+mutable struct ParametersInits{T<:Real} <: ParametersAllInits{T}
     _parent::WeakRef
     _name::Symbol
     time::FUSEparameters__time{T}
