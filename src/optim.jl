@@ -330,9 +330,9 @@ end
 
 Generates a new AbstractParameters with randomized OptParameters
 """
-function rand(parameters::AbstractParameters)
+function Base.rand(parameters::AbstractParameters)
     parameters = deepcopy(parameters)
-    for par in FUSE.opt_parameters(parameters)
+    for par in opt_parameters(parameters)
         rand!(par) 
     end
     return parameters
