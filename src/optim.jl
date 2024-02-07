@@ -326,6 +326,19 @@ end
 # rand #
 # ==== #
 """
+    rand!(parameters::AbstractParameters)
+
+Generates a new AbstractParameters with randomized OptParameters
+"""
+function rand(parameters::AbstractParameters)
+    parameters = deepcopy(parameters)
+    for par in FUSE.opt_parameters(parameters)
+        rand!(par) 
+    end
+    return parameters
+end
+
+"""
     Base.rand(parameters::AbstractParameters, field::Symbol)
 
 Generates a new random sample within the OptParameter distribution
@@ -341,6 +354,18 @@ Generates a new random sample within the OptParameter distribution
 """
 function Base.rand(parameter::AbstractParameter)
     return opt2value(parameter.opt, typeof(parameter.value))
+end
+
+"""
+    rand!(parameters::AbstractParameters)
+
+Randomizes all OptParameters in a AbstractParameters
+"""
+function rand!(parameters::AbstractParameters)
+    for par in opt_parameters(parameters)
+        rand!(par) 
+    end
+    return parameters
 end
 
 """
