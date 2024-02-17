@@ -201,6 +201,8 @@ end
     bounds = float_bounds(opts)
     @test size(bounds) == (2, 7)
     parameters_from_opt!(ini, [0.3, 0.5, 0.8, 0.0, 0.0, 0.0, 2.0])
+    ini.equilibrium.R0 = (t -> 10 + t) ↔ (3, (0.0, 3.0), (10.0, 20.0), (:match, :float))
+    SimulationParameters.rand!(ini.equilibrium, :R0)
 end
 
 @testset "GC_parent" begin
