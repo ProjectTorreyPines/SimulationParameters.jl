@@ -64,6 +64,7 @@ struct OptParameterFunction <: OptParameter
     t_range::Tuple{Float64,Float64}
     n::Int
     nodes::Int
+    boundaries::Tuple{Symbol,Symbol}
     choices::Missing
 end
 
@@ -80,24 +81,30 @@ function ↔(x::Function, r::Tuple)
     return OptParameterFunction(x, r...)
 end
 
-function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, lower::Function, upper::Function)
+# asymmetric function
+function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, lower::Function, upper::Function, boundaries::Tuple{Symbol,Symbol}=(:match, :match))
     n = nodes * 2
-    return OptParameterFunction(nominal, lower, upper, t_range, n, nodes, missing)
+    @assert boundaries[1] ∈ [:match, :float]
+    @assert boundaries[2] ∈ [:match, :float]
+    return OptParameterFunction(nominal, lower, upper, t_range, n, nodes, boundaries, missing)
 end
 
-function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, bounds::Function)
-    return OptParameterFunction(nominal, nodes, t_range, t -> -bounds(t), bounds)
+# symmetric function
+function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, bounds::Function, boundaries::Tuple{Symbol,Symbol}=(:match, :match))
+    return OptParameterFunction(nominal, nodes, t_range, t -> -bounds(t), bounds, boundaries)
 end
 
-function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, v_range::Tuple{Float64,Float64})
+# box
+function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, v_range::Tuple{Float64,Float64}, boundaries::Tuple{Symbol,Symbol}=(:match, :match))
     u_bound(t) = -(nominal(t) - v_range[2])
     l_bound(t) = (v_range[1] - nominal(t))
-    return OptParameterFunction(nominal, nodes, t_range, u_bound, l_bound)
+    return OptParameterFunction(nominal, nodes, t_range, u_bound, l_bound, boundaries)
 end
 
+# from-to box
 function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64})
     v_range = (nominal(t_range[1]), nominal(t_range[2]))
-    return OptParameterFunction(nominal, nodes, t_range, v_range)
+    return OptParameterFunction(nominal, nodes, t_range, v_range, (:match, :match))
 end
 
 # ============ #
@@ -260,8 +267,21 @@ function (opt::OptParameterFunction)(t0::Vector{T}, v0::Vector{T}; clip::Bool=fa
     fl(t) = opt.nominal(t) + opt.lower(t)
     v = v0 .* fu.(t) .+ (1.0 .- v0) .* fl.(t)
 
+    # handle boundary condition
+    if opt.boundaries[1] == :match
+        bc1 = opt.nominal(opt.t_range[1])
+    elseif opt.boundaries[1] == :float
+        bc1 = v[1]
+    end
+    if opt.boundaries[2] == :match
+        bc2 = opt.nominal(opt.t_range[2])
+    elseif opt.boundaries[2] == :float
+        bc2 = v[end]
+    end
+
+    # base points for interpolation
     tt = [opt.t_range[1]; t; opt.t_range[2]]
-    vv = [opt.nominal(opt.t_range[1]); v; opt.nominal(opt.t_range[2])]
+    vv = [bc1; v; bc2]
 
     return t -> begin
         if t < opt.t_range[1] || t > opt.t_range[2]
@@ -333,7 +353,7 @@ Generates a new AbstractParameters with randomized OptParameters
 function Base.rand(parameters::AbstractParameters)
     parameters = deepcopy(parameters)
     for par in opt_parameters(parameters)
-        rand!(par) 
+        rand!(par)
     end
     return parameters
 end
@@ -363,7 +383,7 @@ Randomizes all OptParameters in a AbstractParameters
 """
 function rand!(parameters::AbstractParameters)
     for par in opt_parameters(parameters)
-        rand!(par) 
+        rand!(par)
     end
     return parameters
 end
