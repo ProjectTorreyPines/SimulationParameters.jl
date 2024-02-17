@@ -24,6 +24,7 @@ function Base.push!(parameters_vector::AbstractParametersVector, parameters::Abs
     aop = getfield(parameters_vector, :_aop)
     setfield!(parameters, :_parent, WeakRef(parameters_vector))
     setfield!(parameters, :_name, Symbol(length(parameters_vector)))
+    setup_parameters!(parameters)
     return push!(aop, parameters)
 end
 
@@ -31,6 +32,7 @@ function Base.setindex!(parameters_vector::AbstractParametersVector, index::Int,
     aop = getfield(parameters_vector, :_aop)
     setfield!(parameters, :_parent, WeakRef(parameters_vector))
     setfield!(parameters, :_name, Symbol(index))
+    setup_parameters!(parameters)
     return setindex!(aop, index, parameters)
 end
 

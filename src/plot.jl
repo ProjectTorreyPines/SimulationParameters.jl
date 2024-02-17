@@ -94,7 +94,7 @@ Plot individual time dependent parameter
         @series begin
             seriestype := :scatter
             primary := false
-            marker := :dot
+            marker := :circle
             markerstrokewidth := 0.0
             title := spath(path(par)[2:end])
             titlefontsize := 8
