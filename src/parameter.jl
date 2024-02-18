@@ -1,4 +1,4 @@
-abstract type AbstractParameter end
+abstract type AbstractParameter{T} end
 
 abstract type OptParameter end
 

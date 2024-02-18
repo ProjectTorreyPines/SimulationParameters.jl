@@ -3,7 +3,7 @@ struct SwitchOption
     description::String
 end
 
-mutable struct Switch{T} <: AbstractParameter
+mutable struct Switch{T} <: AbstractParameter{T}
     _name::Symbol
     _parent::WeakRef
     options::AbstractDict{<:Any,SwitchOption}
