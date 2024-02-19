@@ -34,7 +34,7 @@ export par2ystr, ystr2par
 export par2json, json2par
 export par2yaml, yaml2par
 export show_modified
-export OptParameter, ↔, opt_parameters, parameters_from_opt!, rand, rand!, float_bounds, nominal_value
+export OptParameter, ↔, opt_parameters, parameters_from_opt!, rand, rand!, float_bounds, nominal_value, opt_labels
 export InexistentParameterException, NotsetParameterException, BadParameterException
 
 end # module SimulationParameters

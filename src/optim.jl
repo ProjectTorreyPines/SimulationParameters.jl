@@ -122,6 +122,10 @@ function float_bounds(parameter::AbstractParameter)
     return float_bounds(parameter.opt)
 end
 
+function float_bounds(parameters::Vector{AbstractParameter})
+    return hcat([float_bounds(parameter) for parameter in parameters]...)
+end
+
 function float_bounds(opt::OptParameterRange)
     tp = typeof(opt.nominal)
     if tp <: Union{Bool,Integer}
@@ -144,8 +148,32 @@ function float_bounds(opt::OptParameterFunction)
     return [[fill(1E-3, opt.nodes);; fill(1.0 - 1E-3, opt.nodes)]; [fill(-1.0, opt.nodes);; fill(1.0, opt.nodes)]]'
 end
 
-function float_bounds(opts::Vector{AbstractParameter})
-    return hcat([float_bounds(optpar) for optpar in opts]...)
+# ========== #
+# opt_labels #
+# ========== #
+"""
+    opt_labels(parameter::AbstractParameter)
+
+Returns vector with optimization parameter label(s)
+"""
+function opt_labels(parameter::AbstractParameter)
+    return String["$(spath(parameter))$label" for label in opt_labels(parameter.opt)]
+end
+
+function opt_labels(parameters::Vector{AbstractParameter})
+    tmp = String[]
+    for parameter in parameters
+        append!(tmp, opt_labels(parameter))
+    end
+    return tmp
+end
+
+function opt_labels(opt::OptParameter)
+    return String[""]
+end
+
+function opt_labels(opt::OptParameterFunction)
+    return String[[".t$k" for k in 1:opt.nodes];[".v$k" for k in 1:opt.nodes]]
 end
 
 # ============= #
