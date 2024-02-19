@@ -208,6 +208,11 @@ end
 
     # opt_labels
     @test opt_labels(opts) == ["ini.equilibrium.R0.t1", "ini.equilibrium.R0.t2", "ini.equilibrium.R0.t3", "ini.equilibrium.R0.v1", "ini.equilibrium.R0.v2", "ini.equilibrium.R0.v3", "ini.equilibrium.v_params[1].power"]
+
+    # 
+    @test opt_labels(ini) == opt_labels(opts)
+    @test nominal_values(ini) == nominal_values(opts)
+    @test float_bounds(ini) == float_bounds(opts)
 end
 
 @testset "GC_parent" begin

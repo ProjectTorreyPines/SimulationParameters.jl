@@ -115,6 +115,10 @@ end
 
 Returns optimization bounds of a parameter (if it has one)
 """
+function float_bounds(parameters::AbstractParameters)
+    return float_bounds(opt_parameters(parameters))
+end
+
 function float_bounds(parameter::AbstractParameter)
     if parameter.opt === missing
         error("$(parameter.name) does not have a optimization defined")
@@ -152,10 +156,14 @@ end
 # opt_labels #
 # ========== #
 """
-    opt_labels(parameter::AbstractParameter)
+    opt_labels(parameters::AbstractParameters)
 
 Returns vector with optimization parameter label(s)
 """
+function opt_labels(parameters::AbstractParameters)
+    return opt_labels(opt_parameters(parameters))
+end
+
 function opt_labels(parameter::AbstractParameter)
     return String["$(spath(parameter))$label" for label in opt_labels(parameter.opt)]
 end
@@ -176,33 +184,37 @@ function opt_labels(opt::OptParameterFunction)
     return String[[".t$k" for k in 1:opt.nodes];[".v$k" for k in 1:opt.nodes]]
 end
 
-# ============= #
-# nominal_value #
-# ============= #
+# ============== #
+# nominal_values #
+# ============== #
 """
-    nominal_value(parameter::AbstractParameter)
+    nominal_values(parameter::AbstractParameter)
 
 Returns nominal value of an optimization parameter (if it has one)
 """
-function nominal_value(parameter::AbstractParameter)
+function nominal_values(parameters::AbstractParameters)
+    return nominal_values(opt_parameters(parameters))
+end
+
+function nominal_values(parameter::AbstractParameter)
     if parameter.opt === missing
         error("$(parameter.name) does not have a optimization defined")
     end
-    return nominal_value(parameter.opt)
+    return nominal_values(parameter.opt)
 end
 
-function nominal_value(opt::OptParameter)
-    return opt.nominal
+function nominal_values(opts::Vector{AbstractParameter})
+    return vcat([nominal_values(optpar) for optpar in opts]...)
 end
 
-function nominal_value(opt::OptParameterFunction)
+function nominal_values(opt::OptParameter)
+    return [opt.nominal]
+end
+
+function nominal_values(opt::OptParameterFunction)
     t0 = collect(range(0.0, 1.0, opt.nodes + 2)[2:end-1])
     v0 = fill(0.0, opt.nodes)
     return [t0; v0]
-end
-
-function nominal_value(opts::Vector{AbstractParameter})
-    return vcat([nominal_value(optpar) for optpar in opts]...)
 end
 
 # ==== #
