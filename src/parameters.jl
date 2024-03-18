@@ -151,7 +151,7 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol, default
             return default
         else
             tp = typeof(parameter).parameters[1]
-            return parameter.value::tp
+            return getproperty(parameters, field)::tp
         end
     end
 end
