@@ -127,7 +127,7 @@ function float_bounds(parameter::AbstractParameter)
 end
 
 function float_bounds(parameters::Vector{AbstractParameter})
-    return hcat([float_bounds(parameter) for parameter in parameters]...)
+    return hcat((float_bounds(parameter) for parameter in parameters)...)
 end
 
 function float_bounds(opt::OptParameterRange)

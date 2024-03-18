@@ -204,11 +204,11 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
 end
 
 function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})
-    return (field for field in fieldnames(typeof(parameters)) if string(field)[1] != '_')
+    return (field for field in fieldnames(typeof(parameters)) if !startswith(string(field), '_'))
 end
 
 function Base.values(parameters::Union{AbstractParameter,AbstractParameters})
-    return (getfield(parameters, field) for field in fieldnames(typeof(parameters)) if string(field)[1] != '_')
+    return (getfield(parameters, field) for field in fieldnames(typeof(parameters)) if !startswith(string(field), '_'))
 end
 
 function Base.parent(parameters::Union{AbstractParameter,AbstractParameters,AbstractParametersVector})
