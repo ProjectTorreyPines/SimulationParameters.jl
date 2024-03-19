@@ -96,9 +96,9 @@ end
 
 # box
 function OptParameterFunction(nominal::Function, nodes::Int, t_range::Tuple{Float64,Float64}, v_range::Tuple{Float64,Float64}, boundaries::Tuple{Symbol,Symbol}=(:match, :match))
-    u_bound(t) = -(nominal(t) - v_range[2])
     l_bound(t) = (v_range[1] - nominal(t))
-    return OptParameterFunction(nominal, nodes, t_range, u_bound, l_bound, boundaries)
+    u_bound(t) = -(nominal(t) - v_range[2])
+    return OptParameterFunction(nominal, nodes, t_range, l_bound, u_bound, boundaries)
 end
 
 # from-to box
@@ -292,7 +292,7 @@ function (opt::OptParameterFunction)(t0::Vector{T}, v0::Vector{T}; clip::Bool=fa
         t0 = (t0 .* 2.0) .- 1.0
         t0 = atan.(t0) / pi * 2.0
         t0 = (t0 .+ 1.0) / 2.0
-        v0 = atan.(v0) / pi * 2
+        v0 = atan.(v0) / pi * 2.0
     end
 
     # after this point both t0 and v0 are between 0 and 1
