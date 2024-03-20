@@ -73,7 +73,7 @@ Plot individual time dependent parameter
     else
         time_data, mapping = encode_array(time_data)
         if !isnan(time0)
-            data0 = mapping[par.value(time0)]
+            data0 = findfirst(x -> x == par.value(time0), mapping)
         end
         yticks = (collect(values(mapping)), collect(keys(mapping)))
     end
