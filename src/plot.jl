@@ -106,3 +106,9 @@ Plot individual time dependent parameter
         end
     end
 end
+
+@recipe function plot_par(pars::AbstractParameters, field::Symbol)
+    @series begin
+        getfield(pars, field)
+    end
+end
