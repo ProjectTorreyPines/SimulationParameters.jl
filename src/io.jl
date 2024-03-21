@@ -19,20 +19,20 @@ function equals_with_missing(a, b)
     end
 end
 
-function YAML._print(io::IO, val::Missing, level::Int=0, ignore_level::Bool=false)
+function YAML._print(io::IO, value::Missing, level::Int=0, ignore_level::Bool=false)
     return println(io, "~")
 end
 
-function YAML._print(io::IO, val::Symbol, level::Int=0, ignore_level::Bool=false)
-    return println(io, ":$val")
+function YAML._print(io::IO, value::Symbol, level::Int=0, ignore_level::Bool=false)
+    return println(io, ":$value")
 end
 
-function YAML._print(io::IO, val::AbstractRange, level::Int=0, ignore_level::Bool=false)
-    return println(io, "$(Float64(val.offset)):$(Float64(val.step)):$(Float64(val.offset+val.len))")
+function YAML._print(io::IO, value::AbstractRange, level::Int=0, ignore_level::Bool=false)
+    return println(io, "$(Float64(value.offset)):$(Float64(value.step)):$(Float64(value.offset+value.len))")
 end
 
-function YAML._print(io::IO, val::Enum, level::Int=0, ignore_level::Bool=false)
-    str_enum = string(val)
+function YAML._print(io::IO, value::Enum, level::Int=0, ignore_level::Bool=false)
+    str_enum = string(value)
     if match(r"^_.*_$", str_enum) !== nothing
         println(io, ":$(str_enum[2:end-1])")
     else
@@ -97,7 +97,7 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
                 description = ""
             end
             if typeof(value) <: Function
-                # NOTE: For now parameters are saved to JSON not time dependent
+                # NOTE: For now parameters saved to JSON/YAML are not time dependent
                 time = global_time(par)
                 value = value(time)::tp
             end
@@ -261,7 +261,13 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
                 time = global_time(par)
                 dct[field] = value(time)::tp
             elseif tp <: Enum
-                dct[field] = Int(value)
+                str_enum = string(value)
+                dct[field] = ":$(str_enum[2:end-1])"
+            elseif tp <: AbstractRange
+                str_enum = string(value)
+                dct[field] = "$(Float64(value.offset)):$(Float64(value.step)):$(Float64(value.offset+value.len))"
+            elseif tp <: Symbol
+                dct[field] = ":$value"
             else
                 dct[field] = value
             end
@@ -314,6 +320,8 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                     else
                         value = Vector{eltype(tp)}()
                     end
+                elseif tp <: Symbol && typeof(value) <: String && value[1] == ':'
+                    value = Symbol(value[2:end])
                 end
                 setfield!(parameter, :value, value)
             end

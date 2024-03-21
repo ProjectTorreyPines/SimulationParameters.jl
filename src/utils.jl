@@ -68,14 +68,21 @@ function word_wrap(s::String, n=92; i=n, p=1, w=1)
     return s
 end
 
-function encode_array(arr::Vector{<:Any})
+"""
+    encode_array(arr::AbstractVector{T})::Tuple{Vector{Int},Vector{T}} where {T}
+
+Encode an "array of something" (typically symbols) into an array of integers
+
+Returns a tuple with encoded array and mapping used to perform the encoding
+"""
+function encode_array(arr::AbstractVector{T})::Tuple{Vector{Int},Vector{T}} where {T}
     # Identify unique elements and create a mapping
     mapping = OrderedCollections.OrderedDict(elem => idx for (idx, elem) in enumerate(unique(arr)))
 
     # Encode the original array
-    encoded = [mapping[item] for item in arr]
+    encoded = Int[mapping[item] for item in arr]
 
-    return encoded, mapping
+    return encoded, collect(keys(mapping))
 end
 
 function mirror_bound(x::T, l::T, u::T) where {T<:Real}
