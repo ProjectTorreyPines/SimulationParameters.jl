@@ -75,8 +75,9 @@ Plot individual time dependent parameter
         if !isnan(time0)
             data0 = findfirst(x -> x == par.value(time0), mapping)
         end
-        yticks = (collect(values(mapping)), collect(keys(mapping)))
+        yticks = (collect(keys(mapping)), collect(values(mapping)))
     end
+
     @series begin
         xlim := (t_range[1], t_range[end])
         yticks := yticks
@@ -96,7 +97,7 @@ Plot individual time dependent parameter
             primary := false
             marker := :circle
             markerstrokewidth := 0.0
-            title := spath(path(par)[2:end])
+            title := replace(spath(path(par)[2:end]), "𝚶"=>"O")
             titlefontsize := 8
             link := :x
             ylabel := "[$(par.units)]"
