@@ -304,15 +304,24 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
             tp = typeof(parameter).parameters[1]
             value = dct[field]
             if tp <: Enum
+                if typeof(value) <: Int
+                    value = Symbol(string(tp(value))[2:end-1])                    
+                end
                 setproperty!(par, field, value)
             else
                 if value === nothing
                     value = missing
                 elseif tp <: AbstractRange
-                    parts = split(value, ":")
-                    start = parse(Float64, parts[1])
-                    step = parse(Float64, parts[2])
-                    stop = parse(Float64, parts[3])
+                    if typeof(value) <: AbstractString
+                        parts = split(value, ":")
+                        start = parse(Float64, parts[1])
+                        step = parse(Float64, parts[2])
+                        stop = parse(Float64, parts[3])
+                    else
+                        start = value[1]
+                        step = length(value)
+                        stop = value[end]
+                    end
                     value = start:step:stop
                 elseif typeof(value) <: AbstractVector
                     if !isempty(value)
