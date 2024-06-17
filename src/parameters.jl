@@ -134,12 +134,7 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
     end
 end
 
-"""
-Return value of `key` parameter or `default` if parameter is missing
-
-NOTE: This is useful because accessing a `missing` parameter would raise an error
-"""
-function Base.getproperty(parameters::AbstractParameters, field::Symbol, default)
+function _getproperty(parameters::AbstractParameters, field::Symbol, default)
     if field ∉ keys(parameters)
         throw(InexistentParameterException([path(parameters); field]))
     end
@@ -154,6 +149,19 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol, default
             return getproperty(parameters, field)::tp
         end
     end
+end
+
+"""
+Return value of `key` parameter or `default` if parameter is missing
+
+NOTE: This is useful because accessing a `missing` parameter would raise an error
+"""
+function Base.getproperty(parameters::AbstractParameters, field::Symbol, default)
+    return _getproperty(parameters, field, default)
+end
+
+function Base.getproperty(parameters::SimulationParameters.AbstractParameters, field::Symbol, default::Symbol)
+    return _getproperty(parameters, field, default)
 end
 
 function Base.deepcopy(parameters::T) where {T<:Union{AbstractParameter,AbstractParameters}}
