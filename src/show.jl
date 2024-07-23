@@ -3,12 +3,15 @@ struct ParsNodeRepr
     value
 end
 
-function AbstractTrees.printnode(io::IO, pars::AbstractParameters)
-    return printstyled(io, split(string(typeof(pars)), "__")[end]; bold=true)
-end
-
+############
+# children #
+############
 function AbstractTrees.children(pars::AbstractParameters)
     return (ParsNodeRepr(field, getfield(pars, field)) for field in keys(pars))
+end
+
+function AbstractTrees.children(pars::AbstractParametersVector)
+    return (ParsNodeRepr(k, pars[k]) for k in eachindex(pars))
 end
 
 function AbstractTrees.children(node_value::ParsNodeRepr)
@@ -20,6 +23,19 @@ function AbstractTrees.children(node_value::ParsNodeRepr)
     else
         return []
     end
+end
+
+#############
+# printnode #
+#############
+function AbstractTrees.printnode(io::IO, pars::AbstractParameters)
+    name = split(split(string(typeof(pars)), "__")[end], "{")[1]
+    return printstyled(io, name; bold=true)
+end
+
+function AbstractTrees.printnode(io::IO, pars::AbstractParametersVector)
+    name = path(pars)[end]
+    return printstyled(io, name; bold=true)
 end
 
 function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
@@ -76,25 +92,19 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
     end
 end
 
+########
+# show #
+########
 function Base.show(io::IO, ::MIME"text/plain", pars::AbstractParameters, depth::Int=0)
+    return AbstractTrees.print_tree(io, pars)
+end
+
+function Base.show(io::IO, ::MIME"text/plain", pars::AbstractParametersVector, depth::Int=0)
     return AbstractTrees.print_tree(io, pars)
 end
 
 function Base.show(io::IO, pars::AbstractParameters, depth::Int=0)
     return spath(pars)
-end
-
-function parameter_color(p::AbstractParameter)::Symbol
-    value = p.value
-    if value === missing
-        color = :yellow
-    elseif typeof(value) == typeof(p.default) && value == p.default
-        color = :green
-    elseif typeof(value) == typeof(p.base) && value == p.base
-        color = :blue
-    else
-        color = :red
-    end
 end
 
 function Base.show(io::IO, p::AbstractParameter)
@@ -108,6 +118,23 @@ function Base.show(io::IO, p::AbstractParameter)
         end
         printstyled(io, "\n- $item: "; bold=true)
         printstyled(io, "$(getfield(p, item))")
+    end
+end
+
+#########
+# utils #
+#########
+
+function parameter_color(p::AbstractParameter)::Symbol
+    value = p.value
+    if value === missing
+        color = :yellow
+    elseif typeof(value) == typeof(p.default) && value == p.default
+        color = :green
+    elseif typeof(value) == typeof(p.base) && value == p.base
+        color = :blue
+    else
+        color = :red
     end
 end
 
