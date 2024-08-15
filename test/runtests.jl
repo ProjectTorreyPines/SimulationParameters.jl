@@ -95,7 +95,7 @@ ini
     ini.equilibrium.R0 = missing
     @test_throws NotsetParameterException ini.equilibrium.R0
 
-    @test_throws InexistentParameterException ini.equilibrium.does_not_exist = 1.0
+    @test_throws InexistentParametersFieldException ini.equilibrium.does_not_exist = 1.0
 
     @test fieldnames(typeof(ini.equilibrium)) == fieldnames(typeof(FUSEparameters__equilibrium{Float64}()))
 

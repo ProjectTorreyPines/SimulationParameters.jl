@@ -102,7 +102,7 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
         error("use getfield for :$field")
     end
     if field ∉ keys(parameters)
-        throw(InexistentParameterException([path(parameters); field]))
+        throw(InexistentParametersFieldException(parameters, field))
     end
     parameter = getfield(parameters, field)
     if typeof(parameter) <: AbstractParameters
@@ -136,7 +136,7 @@ end
 
 function _getproperty(parameters::AbstractParameters, field::Symbol, default)
     if field ∉ keys(parameters)
-        throw(InexistentParameterException([path(parameters); field]))
+        throw(InexistentParametersFieldException(parameters, field))
     end
     parameter = getfield(parameters, field)
     if typeof(parameter) <: AbstractParameters
@@ -175,7 +175,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         error("use setfield! for :$field")
     end
     if field ∉ keys(parameters)
-        throw(InexistentParameterException([path(parameters); field]))
+        throw(InexistentParametersFieldException(parameters, field))
     end
 
     parameter = getfield(parameters, field)

@@ -1,8 +1,11 @@
-struct InexistentParameterException <: Exception
-    path::Vector{Symbol}
+struct InexistentParametersFieldException <: Exception
+    parameters::AbstractParameters
+    field::Symbol
 end
 
-Base.showerror(io::IO, e::InexistentParameterException) = print(io, "$(join(e.path,".")) does not exist")
+function Base.showerror(io::IO, e::InexistentParametersFieldException)
+    print(io, "$(spath(e.parameters)).$(e.field) does not exist. Possible options are: $(collect(keys(e.parameters)))")
+end
 
 struct NotsetParameterException <: Exception
     path::Vector{Symbol}
