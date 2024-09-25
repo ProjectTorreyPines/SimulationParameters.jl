@@ -8,16 +8,40 @@ Base.@kwdef mutable struct ParametersVector{T<:AbstractParameters} <: AbstractPa
     _aop::Vector{T} = Vector{T}()
 end
 
-function Base.eltype(parameters_vector::AbstractParametersVector)
-    return typeof(parameters_vector).parameters[1]
+function Base.eltype(::Type{ParametersVector{T}}) where {T}
+    return T
 end
 
-for method in [:length, :size, :getindex, :pop!, :iterate]
-    eval(quote
-        function Base.$method(pv::AbstractParametersVector, args...; kw...)
-            return $method(pv._aop, args...; kw...)
-        end
-    end)
+function Base.size(pv::AbstractParametersVector)
+    return size(pv._aop)
+end
+
+function Base.length(pv::AbstractParametersVector)
+    return length(pv._aop)
+end
+
+function Base.getindex(pv::AbstractParametersVector, i::Int)
+    return getindex(pv._aop, i)
+end
+
+function Base.setindex!(pv::AbstractParametersVector, value, i::Int)
+    return setindex!(pv._aop, value, i)
+end
+
+function Base.popat!(pv::AbstractParametersVector, i::Int)
+    return popat!(pv._aop, i)
+end
+
+function Base.deleteat!(pv::AbstractParametersVector, i::Int)
+    return deleteat!(pv._aop, i)
+end
+
+function Base.iterate(pv::AbstractParametersVector)
+    return iterate(pv._aop)
+end
+
+function Base.iterate(pv::AbstractParametersVector, state)
+    return iterate(pv._aop, state)
 end
 
 function Base.push!(parameters_vector::AbstractParametersVector, parameters::AbstractParameters)
