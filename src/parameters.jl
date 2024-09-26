@@ -16,11 +16,7 @@ function Base.size(pv::AbstractParametersVector)
     return size(pv._aop)
 end
 
-function Base.length(pv::AbstractParametersVector)
-    return length(pv._aop)
-end
-
-function Base.getindex(pv::AbstractParametersVector, i::Int)
+function Base.getindex(pv::AbstractParametersVector, i::Any)
     return getindex(pv._aop, i)
 end
 
@@ -40,7 +36,7 @@ function Base.iterate(pv::AbstractParametersVector)
     return iterate(pv._aop)
 end
 
-function Base.iterate(pv::AbstractParametersVector, state)
+function Base.iterate(pv::AbstractParametersVector, state=1)
     return iterate(pv._aop, state)
 end
 
