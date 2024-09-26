@@ -36,7 +36,7 @@ function Base.iterate(pv::AbstractParametersVector)
     return iterate(pv._aop)
 end
 
-function Base.iterate(pv::AbstractParametersVector, state=1)
+function Base.iterate(pv::AbstractParametersVector, state)
     return iterate(pv._aop, state)
 end
 
