@@ -1,7 +1,7 @@
 name = "SimulationParameters"
 uuid = "32ab26d3-25d6-405d-a295-367385e16093"
 authors = ["Orso Meneghini <orso82@gmail.com>"]
-version = "1.0.5"
+version = "1.0.6"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
