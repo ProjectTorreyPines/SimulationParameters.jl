@@ -28,6 +28,10 @@ function Base.popat!(pv::AbstractParametersVector, i::Int)
     return popat!(pv._aop, i)
 end
 
+function Base.pop!(pv::AbstractParametersVector)
+    return pop!(pv._aop)
+end
+
 function Base.deleteat!(pv::AbstractParametersVector, i::Int)
     return deleteat!(pv._aop, i)
 end
@@ -38,6 +42,21 @@ end
 
 function Base.iterate(pv::AbstractParametersVector, state)
     return iterate(pv._aop, state)
+end
+
+function Base.resize!(pv::AbstractParametersVector, n::Int)
+    d = n - length(pv._aop)
+    if d > 0
+        for k in 1:d
+            push!(pv._aop, eltype(pv)())
+        end
+    elseif d < 0
+        for k in 1:-d
+            pop!(pv._aop)
+        end
+    end
+
+    return pv
 end
 
 function Base.push!(parameters_vector::AbstractParametersVector, parameters::AbstractParameters)
