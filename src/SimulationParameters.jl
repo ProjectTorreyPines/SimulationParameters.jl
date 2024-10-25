@@ -4,6 +4,7 @@ import OrderedCollections
 import AbstractTrees
 import JSON
 import YAML
+import Measurements: ±, Measurement
 
 include("parameter.jl")
 
@@ -38,6 +39,6 @@ export OptParameter, ↔, opt_parameters, parameters_from_opt!, rand, rand!, flo
 export InexistentParametersFieldException, NotsetParameterException, BadParameterException
 
 const document = Dict()
-document[Symbol(@__MODULE__)] = [name for name in Base.names(@__MODULE__, all=false, imported=false) if name != Symbol(@__MODULE__)]
+document[Symbol(@__MODULE__)] = [name for name in Base.names(@__MODULE__; all=false, imported=false) if name != Symbol(@__MODULE__)]
 
 end # module SimulationParameters

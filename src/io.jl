@@ -268,6 +268,8 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
                 dct[field] = "$(Float64(value.offset)):$(Float64(value.step)):$(Float64(value.offset+value.len))"
             elseif tp <: Symbol
                 dct[field] = ":$value"
+            elseif tp <: Measurement
+                dct[field] = "$value"
             else
                 dct[field] = value
             end
@@ -296,22 +298,29 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
             # this can happen when par is newer than dct
             continue
         end
-        if typeof(parameter) <: AbstractParameters
+        if dct[field] === nothing
+            continue
+        elseif typeof(parameter) <: AbstractParameters
             dict2par!(dct[field], parameter)
         elseif typeof(parameter) <: AbstractParametersVector
             dict2par!(dct[field], parameter)
         else
             tp = typeof(parameter).parameters[1]
-            value = dct[field]
+            value = replace_colon_strings_to_symbols(dct[field])
             if tp <: Enum
                 if typeof(value) <: Int
-                    value = Symbol(string(tp(value))[2:end-1])                    
+                    value = Symbol(string(tp(value))[2:end-1])
                 end
                 setproperty!(par, field, value)
             else
                 if value === nothing
                     value = missing
-                elseif tp <: AbstractRange
+                elseif tp <: Measurement
+                    if typeof(value) <: AbstractString
+                        v, e = split(value, "±")
+                        value = parse(Float64, v) ± parse(Float64, e)
+                    end
+                elseif tp <: AbstractRange || (tp <: AbstractVector && typeof(value) <: String && contains(value, ":"))
                     if typeof(value) <: AbstractString
                         parts = split(value, ":")
                         start = parse(Float64, parts[1])
@@ -332,7 +341,13 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                 elseif tp <: Symbol && typeof(value) <: String && value[1] == ':'
                     value = Symbol(value[2:end])
                 end
-                setfield!(parameter, :value, value)
+                try
+                    setfield!(parameter, :value, value)
+                catch e
+                    @show field
+                    @show value
+                    rethrow(e)
+                end
             end
         end
     end
