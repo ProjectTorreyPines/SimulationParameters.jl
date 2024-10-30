@@ -110,7 +110,7 @@ function setup_parameters!(parameters::AbstractParametersVector)
     end
 end
 
-function set_new_base!(parameters::AbstractParameters)
+function set_new_base!(@nospecialize(parameters::AbstractParameters))
     for field in keys(parameters)
         parameter = getfield(parameters, field)
         if typeof(parameter) <: AbstractParameters
@@ -124,7 +124,7 @@ function set_new_base!(parameters::AbstractParameters)
     return parameters
 end
 
-function set_new_base!(parameters::AbstractParametersVector)
+function set_new_base!(@nospecialize(parameters::AbstractParametersVector))
     for (kk, parameter) in enumerate(parameters)
         if typeof(parameter) <: AbstractParameters
             setfield!(parameter, :_parent, WeakRef(parameters))
