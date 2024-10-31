@@ -48,11 +48,11 @@ function Base.resize!(pv::AbstractParametersVector, n::Int)
     d = n - length(pv._aop)
     if d > 0
         for k in 1:d
-            push!(pv._aop, eltype(pv)())
+            push!(pv, eltype(pv)())
         end
     elseif d < 0
         for k in 1:-d
-            pop!(pv._aop)
+            pop!(pv)
         end
     end
 
