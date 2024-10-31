@@ -42,83 +42,88 @@ end
 
 function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array::Bool=false, show_info::Bool=true, skip_defaults::Bool=false)
     for field in keys(par)
-        parameter = getfield(par, field)
-        p = path(parameter)
-        sp = spath(p)
-        depth = (count(".", sp) + count("[", sp) - 1) * 2
-        if is_part_of_array
-            pre = string(" "^(depth - 2), "- ")
-            is_part_of_array = false
-        else
-            pre = " "^depth
-        end
-        if typeof(parameter) <: AbstractParameters
-            if skip_defaults && all(
-                !(typeof(leaf) <: ParsNodeRepr) || !(typeof(leaf.value) <: AbstractParameter) || equals_with_missing(getfield(leaf.value, :value), getfield(leaf.value, :default))
-                for leaf in AbstractTrees.Leaves(parameter)
-            )
-                continue
+        try
+            parameter = getfield(par, field)
+            p = path(parameter)
+            sp = spath(p)
+            depth = (count(".", sp) + count("[", sp) - 1) * 2
+            if is_part_of_array
+                pre = string(" "^(depth - 2), "- ")
+                is_part_of_array = false
             else
-                push!(txt, "")
+                pre = " "^depth
+            end
+            if typeof(parameter) <: AbstractParameters
+                if skip_defaults && all(
+                    !(typeof(leaf) <: ParsNodeRepr) || !(typeof(leaf.value) <: AbstractParameter) || equals_with_missing(getfield(leaf.value, :value), getfield(leaf.value, :default))
+                    for leaf in AbstractTrees.Leaves(parameter)
+                )
+                    continue
+                else
+                    push!(txt, "")
+                    push!(txt, string(pre, p[end], ":"))
+                    par2ystr(parameter, txt; show_info, skip_defaults)
+                end
+
+            elseif typeof(parameter) <: AbstractParametersVector
+                if isempty(parameter)
+                    continue
+                end
+                if length(p) == 2
+                    push!(txt, "")
+                end
                 push!(txt, string(pre, p[end], ":"))
                 par2ystr(parameter, txt; show_info, skip_defaults)
-            end
 
-        elseif typeof(parameter) <: AbstractParametersVector
-            if isempty(parameter)
-                continue
-            end
-            if length(p) == 2
-                push!(txt, "")
-            end
-            push!(txt, string(pre, p[end], ":"))
-            par2ystr(parameter, txt; show_info, skip_defaults)
-
-        elseif typeof(parameter) <: AbstractParameter
-            default = getfield(parameter, :default)
-            value = getfield(parameter, :value)
-            if value === default && skip_defaults
-                continue
-            end
-            tp = typeof(parameter).parameters[1]
-            units = getfield(parameter, :units)
-            if units == "-" || !show_info
-                units = ""
-            else
-                units = "[$units]"
-            end
-            if show_info
-                description = getfield(parameter, :description)
-                if typeof(parameter) <: Switch
-                    description = description * " $([k for k in keys(parameter.options)])"
+            elseif typeof(parameter) <: AbstractParameter
+                default = getfield(parameter, :default)
+                value = getfield(parameter, :value)
+                if value === default && skip_defaults
+                    continue
                 end
-                description = replace(description, "\n" => "\\n")
-            else
-                description = ""
-            end
-            if typeof(value) <: Function
-                # NOTE: For now parameters saved to JSON/YAML are not time dependent
-                time = global_time(par)
-                value = value(time)::tp
-            end
+                tp = typeof(parameter).parameters[1]
+                units = getfield(parameter, :units)
+                if units == "-" || !show_info
+                    units = ""
+                else
+                    units = "[$units]"
+                end
+                if show_info
+                    description = getfield(parameter, :description)
+                    if typeof(parameter) <: Switch
+                        description = description * " $([k for k in keys(parameter.options)])"
+                    end
+                    description = replace(description, "\n" => "\\n")
+                else
+                    description = ""
+                end
+                if typeof(value) <: Function
+                    # NOTE: For now parameters saved to JSON/YAML are not time dependent
+                    time = global_time(par)
+                    value = value(time)::tp
+                end
 
-            extra_info = strip("$units $description")
-            if !isempty(extra_info)
-                extra_info = " # $(extra_info)"
-            end
+                extra_info = strip("$units $description")
+                if !isempty(extra_info)
+                    extra_info = " # $(extra_info)"
+                end
 
-            vrepr = rstrip(YAML.write(value), '\n')
+                vrepr = rstrip(YAML.write(value), '\n')
 
-            if contains(vrepr, "\n") || (startswith(vrepr, "- ") && typeof(value) <: AbstractArray && length(value) == 1)
-                push!(txt, string(pre, p[end], ": ", extra_info))
-                for linerep in split(vrepr, "\n")
-                    push!(txt, string(pre, linerep))
+                if contains(vrepr, "\n") || (startswith(vrepr, "- ") && typeof(value) <: AbstractArray && length(value) == 1)
+                    push!(txt, string(pre, p[end], ": ", extra_info))
+                    for linerep in split(vrepr, "\n")
+                        push!(txt, string(pre, linerep))
+                    end
+                else
+                    push!(txt, string(pre, p[end], ": ", vrepr, extra_info))
                 end
             else
-                push!(txt, string(pre, p[end], ": ", vrepr, extra_info))
+                error("par2ystr should not be here")
             end
-        else
-            error("par2ystr should not be here")
+        catch e
+            println("* $(spath(getfield(par, field)))")
+            rethrow(e)
         end
     end
     return txt
