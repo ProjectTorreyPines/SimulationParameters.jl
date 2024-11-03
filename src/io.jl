@@ -310,49 +310,53 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
         elseif typeof(parameter) <: AbstractParametersVector
             dict2par!(dct[field], parameter)
         else
-            tp = typeof(parameter).parameters[1]
-            value = replace_colon_strings_to_symbols(dct[field])
-            if tp <: Enum
-                if typeof(value) <: Int
-                    value = Symbol(string(tp(value))[2:end-1])
-                end
-                setproperty!(par, field, value)
-            else
-                if value === nothing
-                    value = missing
-                elseif tp <: Measurement
-                    if typeof(value) <: AbstractString
-                        v, e = split(value, "±")
-                        value = parse(Float64, v) ± parse(Float64, e)
+            try
+                tp = typeof(parameter).parameters[1]
+                value = replace_colon_strings_to_symbols(dct[field])
+                if tp <: Enum
+                    if typeof(value) <: Int
+                        value = Symbol(string(tp(value))[2:end-1])
                     end
-                elseif tp <: AbstractRange || (tp <: AbstractVector && typeof(value) <: String && contains(value, ":"))
-                    if typeof(value) <: AbstractString
-                        parts = split(value, ":")
-                        start = parse(Float64, parts[1])
-                        step = parse(Float64, parts[2])
-                        stop = parse(Float64, parts[3])
-                    else
-                        start = value[1]
-                        step = length(value)
-                        stop = value[end]
+                    setproperty!(par, field, value)
+                else
+                    if value === nothing
+                        value = missing
+                    elseif tp <: Measurement
+                        if typeof(value) <: AbstractString
+                            v, e = split(value, "±")
+                            value = parse(Float64, v) ± parse(Float64, e)
+                        end
+                    elseif tp <: AbstractRange || (tp <: AbstractVector && typeof(value) <: String && contains(value, ":"))
+                        if typeof(value) <: AbstractString
+                            parts = split(value, ":")
+                            start = parse(Float64, parts[1])
+                            step = parse(Float64, parts[2])
+                            stop = parse(Float64, parts[3])
+                        else
+                            start = value[1]
+                            step = length(value)
+                            stop = value[end]
+                        end
+                        value = start:step:stop
+                    elseif typeof(value) <: AbstractVector
+                        if typeof(tp) <: Union
+                            etp = eltype([etp for etp in Base.uniontypes(tp) if etp <: AbstractVector][1])
+                        else
+                            etp = eltype(tp)
+                        end
+                        if !isempty(value)
+                            value = etp.(value)
+                        else
+                            value = Vector{etp}()
+                        end
+                    elseif tp <: Symbol && typeof(value) <: String && value[1] == ':'
+                        value = Symbol(value[2:end])
                     end
-                    value = start:step:stop
-                elseif typeof(value) <: AbstractVector
-                    if !isempty(value)
-                        value = eltype(tp).(value)
-                    else
-                        value = Vector{eltype(tp)}()
-                    end
-                elseif tp <: Symbol && typeof(value) <: String && value[1] == ':'
-                    value = Symbol(value[2:end])
-                end
-                try
                     setfield!(parameter, :value, value)
-                catch e
-                    @show field
-                    @show value
-                    rethrow(e)
                 end
+            catch e
+                println(stderr, "Error setting parameter $(spath(parameter))")
+                rethrow(e)
             end
         end
     end
