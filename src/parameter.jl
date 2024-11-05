@@ -31,3 +31,6 @@ function units_check(units::AbstractString, description::AbstractString)
     return units
 end
 
+@inline function Base.eltype(par::Type{<:AbstractParameter})
+    return par.parameters[1]
+end
