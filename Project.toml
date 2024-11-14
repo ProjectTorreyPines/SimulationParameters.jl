@@ -5,7 +5,7 @@ version = "1.1.4"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
-FuseUtils = "c8e4ee58-0bec-4a6a-b552-9dd24d6374ac"
+IMASutils = "b8e4ee59-9bed-3a6a-a553-8dd24d6374ad"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
@@ -14,7 +14,7 @@ YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
 AbstractTrees = "0.4"
-FuseUtils = "1.1.2"
+IMASutils = "1.1.2"
 JSON = "0.21"
 Measurements = "2"
 OrderedCollections = "1"

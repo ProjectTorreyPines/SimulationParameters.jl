@@ -5,7 +5,7 @@ import AbstractTrees
 import JSON
 import YAML
 import Measurements: ±, Measurement
-import FuseUtils: mirror_bound
+import IMASutils: mirror_bound
 
 include("parameter.jl")
 
