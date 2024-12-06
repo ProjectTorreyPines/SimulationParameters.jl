@@ -269,7 +269,6 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
                 str_enum = string(value)
                 dct[field] = ":$(str_enum[2:end-1])"
             elseif tp <: AbstractRange
-                str_enum = string(value)
                 dct[field] = "$(Float64(value.offset)):$(Float64(value.step)):$(Float64(value.offset+value.len))"
             elseif tp <: Symbol
                 dct[field] = ":$value"
@@ -348,6 +347,9 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                             value = etp.(value)
                         else
                             value = Vector{etp}()
+                        end
+                        if tp <: Tuple
+                            value = Tuple(value)
                         end
                     elseif tp <: Symbol && typeof(value) <: String && value[1] == ':'
                         value = Symbol(value[2:end])
