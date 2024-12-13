@@ -32,6 +32,10 @@ function Base.pop!(pv::AbstractParametersVector)
     return pop!(pv._aop)
 end
 
+function Base.empty!(pv::AbstractParametersVector)
+    return empty!(pv._aop)
+end
+
 function Base.deleteat!(pv::AbstractParametersVector, i::Int)
     return deleteat!(pv._aop, i)
 end
