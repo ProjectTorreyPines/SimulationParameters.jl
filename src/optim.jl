@@ -9,6 +9,11 @@ struct OptParameterRange{T} <: OptParameter where {T<:Real}
     choices::Missing
 end
 
+struct OptParameterDistribution{T} <: OptParameter where {T<:Real}
+    nominal::T
+    dist::Distributions.Distribution
+end
+
 """
     ↔(x::Real, r::AbstractVector)
 
@@ -18,6 +23,26 @@ function ↔(x::Real, r::AbstractVector)
     @assert length(r) == 2
     @assert typeof(x) === typeof(r[1]) === typeof(r[2]) "OptParameterRange `P ↔ [L, U]` must have the same type for `P`, `L`, and `U`"
     return OptParameterRange(x, r[1], r[2])
+end
+
+"""
+    ↔(x::Real, dist::Distributions.Distribution)
+
+"leftrightarrow" unicode constructor for OptParameterDistribution
+"""
+function ↔(x::Real, dist::Distributions.Distribution)
+    supported_range = Distributions.support(dist)
+    @assert x ∈ supported_range "x=$x is not in the supported range of $(supported_range)"
+
+    # Check if the x is outside the nominal range
+    # Define the nominal range as the central 90% quantile interval (5%-95%)
+    nominal_lower = Distributions.quantile(dist, 0.05) # lower bound
+    nominal_upper = Distributions.quantile(dist, 0.95) # upper bound
+    if (x - nominal_lower) * (x - nominal_upper) > 0
+        @warn "x=$x seems not to be in the nominal range of given distribution: [$nominal_lower (5%), $nominal_upper (95%)]"
+    end
+
+    return OptParameterDistribution(x, dist)
 end
 
 function OptParameterRange(nominal::T, lower::T, upper::T) where {T}
@@ -380,6 +405,16 @@ Samples the OptParameterFunction for a function
 """
 function opt2value(opt::OptParameterFunction, tp::Type)
     return opt()
+end
+
+
+"""
+    opt2value(opt::OptParameterDistribution, tp::Type)
+
+Samples the OptParameterDistribution for a value
+"""
+function opt2value(opt::OptParameterDistribution, tp::Type)
+    return rand(opt.dist)
 end
 
 # ==== #

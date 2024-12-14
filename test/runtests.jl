@@ -1,6 +1,7 @@
 using SimulationParameters
 import InteractiveUtils
 using Test
+using Statistics
 
 abstract type ParametersInit{T} <: AbstractParameters{T} end # container for all parameters of a init
 abstract type ParametersAllInits{T} <: AbstractParameters{T} end # --> abstract type of ParametersInits, container for all parameters of all inits
@@ -209,10 +210,28 @@ end
     # opt_labels
     @test opt_labels(opts) == ["ini.equilibrium.R0.t1", "ini.equilibrium.R0.t2", "ini.equilibrium.R0.t3", "ini.equilibrium.R0.v1", "ini.equilibrium.R0.v2", "ini.equilibrium.R0.v3", "ini.equilibrium.v_params[1].power"]
 
-    # 
+    #
     @test opt_labels(ini) == opt_labels(opts)
     @test nominal_values(ini) == nominal_values(opts)
     @test float_bounds(ini) == float_bounds(opts)
+
+    # Check params with Distribution
+    ini = ParametersInits()
+    target_mean = 5.0
+    target_std = 1.5
+    Dist = SimulationParameters.Distributions # alias name
+    trunc_Norm_dist = Dist.truncated(Dist.Normal(target_mean, target_std), lower=0.0, upper=10.0)
+
+    @test_throws AssertionError -1.0 ↔ trunc_Norm_dist
+    @test_throws AssertionError 15.0 ↔ trunc_Norm_dist
+
+    ini.equilibrium.R0 = 5.0 ↔ trunc_Norm_dist
+
+    sampled_R0 = [rand(getfield(ini.equilibrium, :R0)) for _ in 1:Int(1e6)]
+
+    @test ini.equilibrium.R0 == 5.0
+    @test abs((mean(sampled_R0) - target_mean) / target_mean) < 0.01
+    @test abs((std(sampled_R0) - target_std) / target_std) < 0.01
 end
 
 @testset "GC_parent" begin
