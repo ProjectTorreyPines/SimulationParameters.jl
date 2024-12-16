@@ -6,6 +6,7 @@ import JSON
 import YAML
 import Measurements: ±, Measurement
 import IMASutils: mirror_bound
+import Distributions
 
 include("parameter.jl")
 
