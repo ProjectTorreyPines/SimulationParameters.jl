@@ -48,11 +48,11 @@ function Base.iterate(pv::AbstractParametersVector, state)
     return iterate(pv._aop, state)
 end
 
-function Base.resize!(pv::AbstractParametersVector, n::Int)
+function Base.resize!(pv::AbstractParametersVector, n::Int, args...; kw...)
     d = n - length(pv._aop)
     if d > 0
         for k in 1:d
-            push!(pv, eltype(pv)())
+            push!(pv, eltype(pv)(args...; kw...))
         end
     elseif d < 0
         for k in 1:-d
