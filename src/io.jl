@@ -256,32 +256,39 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
             dct[field] = []
             par2dict!(parameter, dct[field])
         elseif typeof(parameter) <: AbstractParameter
-            tp = typeof(parameter).parameters[1]
-            value = getfield(parameter, :value)
-            if value === missing
-                # dct[field] = missing
-                # pass
-            elseif typeof(value) <: Function
-                # NOTE: For now parameters are saved to JSON not time dependent
-                time = global_time(par)
-                dct[field] = value(time)::tp
-            elseif tp <: Enum
-                str_enum = string(value)
-                dct[field] = ":$(str_enum[2:end-1])"
-            elseif tp <: AbstractRange
-                dct[field] = "$(Float64(value.offset)):$(Float64(value.step)):$(Float64(value.offset+value.len))"
-            elseif tp <: Symbol
-                dct[field] = ":$value"
-            elseif tp <: Measurement
-                dct[field] = "$value"
-            else
-                dct[field] = value
+            tmp = string_encode_value(par, field)
+            if tmp !== missing
+                dct[field] = tmp
             end
         else
             error("par2dict! should not be here")
         end
     end
     return dct
+end
+
+function string_encode_value(par::AbstractParameters, field::Symbol)
+    parameter = getfield(par, field)
+    tp = typeof(parameter).parameters[1]
+    value = getfield(parameter, :value)
+    if value === missing
+        return missing
+    elseif typeof(value) <: Function
+        # NOTE: For now parameters are saved to JSON not time dependent
+        time = global_time(par)
+        return value(time)::tp
+    elseif tp <: Enum
+        str_enum = string(value)
+        return ":$(str_enum[2:end-1])"
+    elseif tp <: AbstractRange
+        return "$(Float64(value.offset)):$(Float64(value.step)):$(Float64(value.offset+value.len))"
+    elseif tp <: Symbol
+        return ":$value"
+    elseif tp <: Measurement
+        return "$value"
+    else
+        return value
+    end
 end
 
 function par2dict!(par::AbstractParametersVector, vec::AbstractVector)
