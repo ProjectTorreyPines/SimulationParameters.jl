@@ -371,10 +371,13 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                             value = Vector{etp}()
                         end
                         if tp <: Tuple
-                            value = Tuple(value)
+                            value = tuple(map((val, target_type) -> convert(target_type, val), value, tp.parameters)...)
                         end
                     elseif tp <: Symbol && typeof(value) <: String && value[1] == ':'
                         value = Symbol(value[2:end])
+                    elseif tp <: Tuple
+                        expr = Meta.parse(value)
+                        value = tuple(map((x, target_type) -> convert(target_type, eval(x)), expr.args, tp.parameters)...)
                     end
                     setfield!(parameter, :value, value)
                 end
