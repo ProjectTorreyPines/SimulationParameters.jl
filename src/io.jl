@@ -1,3 +1,7 @@
+# ==== # 
+# YAML #
+# ==== # 
+
 function par2ystr(par::AbstractParameters; show_info::Bool=true, skip_defaults::Bool=false)
     tmp = par2ystr(par, String[]; show_info, skip_defaults)
     return join(tmp[2:end], "\n")
@@ -49,13 +53,13 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
             depth = (count(".", sp) + count("[", sp) - 1) * 2
             if is_part_of_array
                 pre = string(" "^(depth - 2), "- ")
-                is_part_of_array = false
             else
                 pre = " "^depth
             end
             if typeof(parameter) <: AbstractParameters
                 if skip_defaults && all(
-                    !(typeof(leaf) <: ParsNodeRepr) || !(typeof(leaf.value) <: AbstractParameter) || equals_with_missing(getfield(leaf.value, :value), getfield(leaf.value, :default))
+                    !(typeof(leaf) <: ParsNodeRepr) || !(typeof(leaf.value) <: AbstractParameter) ||
+                    equals_with_missing(getfield(leaf.value, :value), getfield(leaf.value, :default))
                     for leaf in AbstractTrees.Leaves(parameter)
                 )
                     continue
@@ -121,6 +125,9 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
             else
                 error("par2ystr should not be here")
             end
+            if is_part_of_array
+                is_part_of_array = false
+            end
         catch e
             println("* $(spath(getfield(par, field)))")
             rethrow(e)
@@ -181,6 +188,10 @@ function yaml2par(filename::AbstractString, par_data::AbstractParameters)
     end
 end
 
+# ==== # 
+# JSON #
+# ==== # 
+
 """
     par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
 
@@ -230,6 +241,10 @@ function par2jstr(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
     data = replace_symbols_to_colon_strings(data)
     return JSON.json(data, indent; kw...)
 end
+
+# ==== #
+# Dict #
+# ==== #
 
 """
     par2dict(par::AbstractParameters)
@@ -305,18 +320,18 @@ Convert dictionary to AbstractParameters
 function dict2par!(dct::AbstractDict, par::AbstractParameters)
     for field in keys(par)
         parameter = getfield(par, field)
-        if field ∉ keys(dct)
-            # this can happen when par is newer than dct
-            continue
-        end
-        if dct[field] === nothing
-            continue
-        elseif typeof(parameter) <: AbstractParameters
-            dict2par!(dct[field], parameter)
-        elseif typeof(parameter) <: AbstractParametersVector
-            dict2par!(dct[field], parameter)
-        else
-            try
+        try
+            if field ∉ keys(dct)
+                # this can happen when par is newer than dct
+                continue
+            end
+            if dct[field] === nothing
+                continue
+            elseif typeof(parameter) <: AbstractParameters
+                dict2par!(dct[field], parameter)
+            elseif typeof(parameter) <: AbstractParametersVector
+                dict2par!(dct[field], parameter)
+            else
                 tp = typeof(parameter).parameters[1]
                 value = replace_colon_strings_to_symbols(dct[field])
                 if tp <: Enum
@@ -363,10 +378,10 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                     end
                     setfield!(parameter, :value, value)
                 end
-            catch e
-                println(stderr, "Error setting parameter $(spath(parameter))")
-                rethrow(e)
             end
+        catch e
+            println(stderr, "Error setting parameter $(spath(parameter))")
+            rethrow(e)
         end
     end
     return par
@@ -379,6 +394,11 @@ function dict2par!(vec::AbstractVector, par::AbstractParametersVector)
         dict2par!(vec[kk], subpar)
     end
 end
+
+
+# ===== #
+# Utils #
+# ===== #
 
 """
     replace_symbols_to_colon_strings(obj::Any)
