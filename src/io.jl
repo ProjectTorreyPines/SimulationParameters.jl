@@ -123,7 +123,7 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
                     push!(txt, string(pre, p[end], ": ", vrepr, extra_info))
                 end
             else
-                error("par2ystr should not be here")
+                error("par2ystr $(field) should not be here, with $(typeof(parameter))")
             end
             if is_part_of_array
                 is_part_of_array = false
@@ -156,13 +156,13 @@ function Base.string(@nospecialize(par::AbstractParameters); show_info=false, sk
 end
 
 """
-    ystr2par(yaml_string::String, par_data::AbstractParameters)
+    ystr2par(yaml_string::String, par::AbstractParameters)
 
 Loads AbstractParameters from YAML string
 """
-function ystr2par(yaml_string::String, par_data::AbstractParameters)
+function ystr2par(yaml_string::String, par::AbstractParameters)
     if isempty(yaml_string)
-        return par_data
+        return par
     end
 
     # replace missing with null
@@ -172,19 +172,19 @@ function ystr2par(yaml_string::String, par_data::AbstractParameters)
     # now parse
     data = YAML.load(yaml_string; dicttype=OrderedCollections.OrderedDict)
     data = replace_colon_strings_to_symbols(data)
-    dict2par!(data, par_data)
-    setup_parameters!(par_data)
-    return par_data
+    dict2par!(data, par)
+    setup_parameters!(par)
+    return par
 end
 
 """
-    yaml2par(filename::AbstractString, par_data::AbstractParameters)
+    yaml2par(filename::AbstractString, par::AbstractParameters)
 
 Loads AbstractParameters from YAML
 """
-function yaml2par(filename::AbstractString, par_data::AbstractParameters)
+function yaml2par(filename::AbstractString, par::AbstractParameters)
     open(filename, "r") do io
-        return ystr2par(read(io, String), par_data)
+        return ystr2par(read(io, String), par)
     end
 end
 
@@ -208,27 +208,27 @@ function par2json(@nospecialize(par::AbstractParameters), filename::String; kw..
 end
 
 """
-    json2par(filename::AbstractString, par_data::AbstractParameters)
+    json2par(filename::AbstractString, par::AbstractParameters)
 
 Loads AbstractParameters from JSON
 """
-function json2par(filename::AbstractString, par_data::AbstractParameters)
+function json2par(filename::AbstractString, par::AbstractParameters)
     open(filename, "r") do io
-        return jstr2par(read(io, String), par_data)
+        return jstr2par(read(io, String), par)
     end
 end
 
 """
-    jstr2par(json_string::String, par_data::AbstractParameters)
+    jstr2par(json_string::String, par::AbstractParameters)
 
 Loads AbstractParameters from JSON string
 """
-function jstr2par(json_string::String, par_data::AbstractParameters)
+function jstr2par(json_string::String, par::AbstractParameters)
     data = JSON.parse(json_string; dicttype=OrderedCollections.OrderedDict)
     data = replace_colon_strings_to_symbols(data)
-    dict2par!(data, par_data)
-    setup_parameters!(par_data)
-    return par_data
+    dict2par!(data, par)
+    setup_parameters!(par)
+    return par
 end
 
 """
@@ -271,39 +271,15 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
             dct[field] = []
             par2dict!(parameter, dct[field])
         elseif typeof(parameter) <: AbstractParameter
-            tmp = string_encode_value(par, field)
-            if tmp !== missing
-                dct[field] = tmp
+            value = string_encode_value(par, field; bool_to_int=false)
+            if value !== missing
+                dct[field] = value
             end
         else
-            error("par2dict! should not be here")
+            error("par2dict! $(field) should not be here, with $(typeof(parameter))")
         end
     end
     return dct
-end
-
-function string_encode_value(par::AbstractParameters, field::Symbol)
-    parameter = getfield(par, field)
-    tp = typeof(parameter).parameters[1]
-    value = getfield(parameter, :value)
-    if value === missing
-        return missing
-    elseif typeof(value) <: Function
-        # NOTE: For now parameters are saved to JSON not time dependent
-        time = global_time(par)
-        return value(time)::tp
-    elseif tp <: Enum
-        str_enum = string(value)
-        return ":$(str_enum[2:end-1])"
-    elseif tp <: AbstractRange
-        return "$(Float64(value.offset)):$(Float64(value.step)):$(Float64(value.offset+value.len))"
-    elseif tp <: Symbol
-        return ":$value"
-    elseif tp <: Measurement
-        return "$value"
-    else
-        return value
-    end
 end
 
 function par2dict!(par::AbstractParametersVector, vec::AbstractVector)
@@ -332,55 +308,8 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
             elseif typeof(parameter) <: AbstractParametersVector
                 dict2par!(dct[field], parameter)
             else
-                tp = typeof(parameter).parameters[1]
-                value = replace_colon_strings_to_symbols(dct[field])
-                if tp <: Enum
-                    if typeof(value) <: Int
-                        value = Symbol(string(tp(value))[2:end-1])
-                    end
-                    setproperty!(par, field, value)
-                else
-                    if value === nothing
-                        value = missing
-                    elseif tp <: Measurement
-                        if typeof(value) <: AbstractString
-                            v, e = split(value, "±")
-                            value = parse(Float64, v) ± parse(Float64, e)
-                        end
-                    elseif tp <: AbstractRange || (tp <: AbstractVector && typeof(value) <: String && contains(value, ":"))
-                        if typeof(value) <: AbstractString
-                            parts = split(value, ":")
-                            start = parse(Float64, parts[1])
-                            step = parse(Float64, parts[2])
-                            stop = parse(Float64, parts[3])
-                        else
-                            start = value[1]
-                            step = length(value)
-                            stop = value[end]
-                        end
-                        value = start:step:stop
-                    elseif typeof(value) <: AbstractVector
-                        if typeof(tp) <: Union
-                            etp = eltype([etp for etp in Base.uniontypes(tp) if etp <: AbstractVector][1])
-                        else
-                            etp = eltype(tp)
-                        end
-                        if !isempty(value)
-                            value = etp.(value)
-                        else
-                            value = Vector{etp}()
-                        end
-                        if tp <: Tuple
-                            value = tuple(map((val, target_type) -> convert(target_type, val), value, tp.parameters)...)
-                        end
-                    elseif tp <: Symbol && typeof(value) <: String && value[1] == ':'
-                        value = Symbol(value[2:end])
-                    elseif tp <: Tuple
-                        expr = Meta.parse(value)
-                        value = tuple(map((x, target_type) -> convert(target_type, eval(x)), expr.args, tp.parameters)...)
-                    end
-                    setfield!(parameter, :value, value)
-                end
+                value = string_decode_value(par, field, dct[field])                
+                setproperty!(par, field, value)
             end
         catch e
             println(stderr, "Error setting parameter $(spath(parameter))")
@@ -398,10 +327,178 @@ function dict2par!(vec::AbstractVector, par::AbstractParametersVector)
     end
 end
 
+# ==== #
+# HDF5 #
+# ==== #
+
+"""
+    par2hdf(@nospecialize(par::AbstractParameters), filename::String; kw...)
+
+Save AbstractParameters to HDF5
+
+NOTE: kw arguments are passed to HDF5.h5open
+"""
+function par2hdf(@nospecialize(par::AbstractParameters), filename::String; kw...)
+    HDF5.h5open(filename, "w"; kw...) do fid
+        return par2hdf!(par, fid)
+    end
+end
+
+function par2hdf!(@nospecialize(par::AbstractParameters), gparent::Union{HDF5.File,HDF5.Group})
+    for field in keys(par)
+        parameter = getfield(par, field)
+        if typeof(parameter) <: Union{AbstractParameters,AbstractParametersVector}
+            g = HDF5.create_group(gparent, string(field))
+            par2hdf!(parameter, g)
+        elseif typeof(parameter) <: AbstractParameter
+            value = string_encode_value(par, field; bool_to_int=true)
+            if value === missing
+                continue
+            elseif typeof(value) <: AbstractString
+                HDF5.write(gparent, string(field), value)
+            else
+                dset = HDF5.create_dataset(gparent, string(field), eltype(value), size(value))
+                HDF5.write(dset, value)
+            end
+        else
+            error("par2hdf! $(field) should not be here, with $(typeof(parameter))")
+        end
+    end
+end
+
+function par2hdf!(@nospecialize(par::AbstractParametersVector), gparent::Union{HDF5.File,HDF5.Group})
+    for (index, parameter) in enumerate(par)
+        g = HDF5.create_group(gparent, string(index))
+        par2hdf!(parameter, g)
+    end
+end
+
+function hdf2par(@nospecialize(par::AbstractParameters), filename::String; kw...)
+    HDF5.h5open(filename, "w"; kw...) do fid
+        return par2hdf!(par, fid)
+    end
+end
+
+"""
+    hdf2par(filename::AbstractString, par::AbstractParameters; kw...)
+
+Loads AbstractParameters from HDF5
+"""
+function hdf2par(filename::AbstractString, par::AbstractParameters; kw...)
+    HDF5.h5open(filename, "r"; kw...) do fid
+        hdf2par(fid, par)
+    end
+end
+
+function hdf2par(gparent::Union{HDF5.File,HDF5.Group}, @nospecialize(par::AbstractParameters))
+    for field in keys(gparent)
+        if typeof(gparent[field]) <: HDF5.Dataset
+            value = string_decode_value(par, Symbol(field), read(gparent, field))
+            setproperty!(par, Symbol(field), value)
+        else
+            hdf2par(gparent[field], getproperty(par, Symbol(field)))
+        end
+    end
+    return par
+end
+
+function hdf2par(gparent::Union{HDF5.File,HDF5.Group}, @nospecialize(par::AbstractParametersVector))
+    indexes = sort!(collect(map(x -> parse(Int64, x), keys(gparent))))
+    if isempty(par)
+        resize!(par, length(indexes))
+    end
+    for (k, index) in enumerate(indexes)
+        hdf2par(gparent[string(index)], par[k])
+    end
+    return par
+end
 
 # ===== #
 # Utils #
 # ===== #
+
+function string_encode_value(par::AbstractParameters, field::Symbol; bool_to_int::Bool)
+    parameter = getfield(par, field)
+    tp = typeof(parameter).parameters[1]
+    value = getfield(parameter, :value)
+    if value === missing
+        return missing
+    elseif typeof(value) <: Function
+        # NOTE: For now parameters are saved to JSON not time dependent
+        time = global_time(par)
+        return value(time)::tp
+    elseif tp <: Enum
+        str_enum = string(value)
+        return ":$(str_enum[2:end-1])"
+    elseif tp <: AbstractRange || typeof(value) <: AbstractRange
+        return "$(Float64(value.offset)):$(Float64(value.step)):$(Float64(value.offset+value.len))"
+    elseif tp <: Symbol || typeof(value) <: Symbol
+        return ":$value"
+    elseif tp <: Vector{Symbol}
+        return [":$val" for val in value]
+    elseif tp <: Tuple
+        return collect(value)
+    elseif tp <: Measurement
+        return "$value"
+    elseif bool_to_int && tp <: Bool
+        return Int(value)
+    else
+        return value
+    end
+end
+
+function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
+    parameter = getfield(par, field)
+    tp = typeof(parameter).parameters[1]
+    if tp <: Enum
+        if typeof(value) <: Int
+            value = Symbol(string(tp(value))[2:end-1])
+        end
+    else
+        if value === nothing
+            value = missing
+        elseif tp <: Measurement
+            if typeof(value) <: AbstractString
+                v, e = split(value, "±")
+                value = parse(Float64, v) ± parse(Float64, e)
+            end
+        elseif tp <: AbstractRange || (tp <: AbstractVector && typeof(value) <: String && contains(value, ":"))
+            if typeof(value) <: AbstractString
+                parts = split(value, ":")
+                start = parse(Float64, parts[1])
+                step = parse(Float64, parts[2])
+                stop = parse(Float64, parts[3])
+            else
+                start = value[1]
+                step = length(value)
+                stop = value[end]
+            end
+            value = start:step:stop
+        elseif typeof(value) <: AbstractVector
+            if typeof(tp) <: Union
+                etp = eltype([etp for etp in Base.uniontypes(tp) if etp <: AbstractVector][1])
+            else
+                etp = eltype(tp)
+            end
+            if !isempty(value)
+                value = etp.(value)
+            else
+                value = Vector{etp}()
+            end
+            if tp <: Tuple
+                value = tuple(map((val, target_type) -> convert(target_type, val), value, tp.parameters)...)
+            end
+        elseif typeof(value) <: String && !isempty(value) && value[1] == ':'
+            value = Symbol(value[2:end])
+        elseif tp <: Tuple
+            expr = Meta.parse(value)
+            value = tuple(map((x, target_type) -> convert(target_type, eval(x)), expr.args, tp.parameters)...)
+        elseif tp <: Bool && typeof(value) <: Int
+            value = Bool(value)
+        end
+    end
+    return value
+end
 
 """
     replace_symbols_to_colon_strings(obj::Any)
