@@ -271,7 +271,7 @@ function par2dict!(par::AbstractParameters, dct::AbstractDict)
             dct[field] = []
             par2dict!(parameter, dct[field])
         elseif typeof(parameter) <: AbstractParameter
-            value = string_encode_value(par, field; bool_to_int=false)
+            value = string_encode_value(par, field)
             if value !== missing
                 dct[field] = value
             end
@@ -351,7 +351,7 @@ function par2hdf!(@nospecialize(par::AbstractParameters), gparent::Union{HDF5.Fi
             g = HDF5.create_group(gparent, string(field))
             par2hdf!(parameter, g)
         elseif typeof(parameter) <: AbstractParameter
-            value = string_encode_value(par, field; bool_to_int=true)
+            value = string_encode_value(par, field)
             if value === missing
                 continue
             elseif typeof(value) <: AbstractString
@@ -417,7 +417,7 @@ end
 # Utils #
 # ===== #
 
-function string_encode_value(par::AbstractParameters, field::Symbol; bool_to_int::Bool)
+function string_encode_value(par::AbstractParameters, field::Symbol)
     parameter = getfield(par, field)
     tp = typeof(parameter).parameters[1]
     value = getfield(parameter, :value)
@@ -440,8 +440,6 @@ function string_encode_value(par::AbstractParameters, field::Symbol; bool_to_int
         return collect(value)
     elseif tp <: Measurement
         return "$value"
-    elseif bool_to_int && tp <: Bool
-        return Int(value)
     else
         return value
     end
