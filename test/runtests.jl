@@ -234,6 +234,19 @@ end
     @test abs((std(sampled_R0) - target_std) / target_std) < 0.01
 end
 
+@testset "time" begin
+    ini = ParametersInits()
+
+    time = range(0,1,11)
+    ini.equilibrium.R0 = TimeData(time, time * 2)
+
+    ini.time.simulation_start = 1.0
+    @assert ini.equilibrium.R0 == 2.0
+
+    ini.time.simulation_start = 0.5
+    @assert ini.equilibrium.R0 == 1.0
+end
+
 @testset "GC_parent" begin
     ini = ParametersInits()
     @test parent(ini.equilibrium) === ini

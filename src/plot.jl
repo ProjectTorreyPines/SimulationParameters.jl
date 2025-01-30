@@ -8,7 +8,7 @@ Plot time dependent parameters in a plot layout
 @recipe function plot_pars(pars::AbstractParameters)
     N = 0
     for par in leaves(pars)
-        if typeof(par.value) <: Function
+        if typeof(par.value) <: Union{TimeData,Function}
             N += 1
         end
     end
@@ -17,7 +17,7 @@ Plot time dependent parameters in a plot layout
         layout := @layout [N]
         k = 0
         for par in leaves(pars)
-            if typeof(par.value) <: Function
+            if typeof(par.value) <: Union{TimeData,Function}
                 k += 1
                 @series begin
                     label := ""
@@ -60,30 +60,41 @@ Plot individual time dependent parameter
     @assert typeof(time0) <: Float64
     @assert typeof(t_range) <: Union{AbstractVector{<:Float64},AbstractRange{<:Float64}} "must specify a `t_range=range(...)` to plot $(spath(par))"
 
-    if !(typeof(par.value) <: Function)
+    if typeof(par.value) <: Function
+        time = t_range
+        time_data = par.value.(t_range)
+    elseif typeof(par.value) <: TimeData
+        time = par.value.time
+        time_data = par.value.data
+    else
         error("Parameter $(spath(par)) is not defined as a time dependent function")
     end
 
-    time_data = par.value.(t_range)
+    # data at time0
+    if !isnan(time0)
+        data0 = par.value(time0)
+    end
+
+    # encoding for non-numerical data
     if eltype(time_data) <: Number
-        if !isnan(time0)
-            data0 = par.value(time0)
-        end
         yticks = :auto
     else
         time_data, mapping = encode_array(time_data)
         if !isnan(time0)
-            data0 = findfirst(x -> x == par.value(time0), mapping)
+            data0 = findfirst(x -> x == data0, mapping)
         end
         yticks = (collect(keys(mapping)), collect(values(mapping)))
     end
 
+    # plot time trace
     @series begin
         xlim := (t_range[1], t_range[end])
         yticks := yticks
         label --> ""
-        t_range, time_data
+        time, time_data
     end
+
+    # shaded area for time-optimization parameters
     if par.opt !== missing
         @series begin
             ls := :dash
@@ -91,6 +102,8 @@ Plot individual time dependent parameter
             par.opt
         end
     end
+
+    # dot at current time
     if !isnan(time0)
         @series begin
             seriestype := :scatter

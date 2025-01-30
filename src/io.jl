@@ -101,10 +101,10 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
                 else
                     description = ""
                 end
-                if typeof(value) <: Function
+                if typeof(value) <: Union{Function,TimeData}
                     # NOTE: For now parameters saved to JSON/YAML are not time dependent
-                    time = global_time(par)
-                    value = value(time)::tp
+                    time0 = global_time(par)
+                    value = value(time0)::tp
                 end
 
                 extra_info = strip("$units $description")
@@ -312,7 +312,7 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                 setproperty!(par, field, value)
             end
         catch e
-            println(stderr, "Error setting parameter $(spath(parameter))")
+            println(stderr, "Error setting parameter $(spath(parameter)) with $(dct[field])")
             rethrow(e)
         end
     end
@@ -423,10 +423,10 @@ function string_encode_value(par::AbstractParameters, field::Symbol)
     value = getfield(parameter, :value)
     if value === missing
         return missing
-    elseif typeof(value) <: Function
+    elseif typeof(value) <: Union{Function,TimeData}
         # NOTE: For now parameters are saved to JSON not time dependent
-        time = global_time(par)
-        return value(time)::tp
+        time0 = global_time(par)
+        return value(time0)::tp
     elseif tp <: Enum
         str_enum = string(value)
         return ":$(str_enum[2:end-1])"

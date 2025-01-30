@@ -30,7 +30,7 @@ include("plot.jl")
 include("errors.jl")
 
 export AbstractParameter, AbstractParameters, AbstractParametersVector
-export Entry, Switch, SwitchOption, ParametersVector
+export Entry, Switch, SwitchOption, ParametersVector, TimeData
 export setup_parameters!, set_new_base!
 export par2dict, par2dict!, dict2par!
 export par2jstr, jstr2par

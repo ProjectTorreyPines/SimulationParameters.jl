@@ -165,9 +165,9 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
             tp = typeof(parameter).parameters[1]
             # if the user entered a function for a parameter that was not explicitly of Function type,
             # then this is an indication of a time dependent parameter
-            if typeof(parameter.value) <: Function && !(tp <: Function)
-                time = global_time(parameters)
-                value = parameter.value(time)
+            if typeof(parameter.value) <: Union{Function,TimeData} && !(tp <: Function)
+                time0 = global_time(parameters)
+                value = parameter.value(time0)
                 if !ismissing(value) && !isnothing(parameter.check) && !(typeof(value) <: Function)
                     parameter.check(value)
                 end
@@ -233,7 +233,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
             setfield!(parameter, :opt, missing)
         end
 
-        if !ismissing(value) && !isnothing(parameter.check) && !(typeof(value) <: Function)
+        if !ismissing(value) && !isnothing(parameter.check) && !(typeof(value) <: Union{Function,TimeData})
             parameter.check(value)
         end
 
