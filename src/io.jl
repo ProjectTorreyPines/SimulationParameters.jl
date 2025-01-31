@@ -296,24 +296,24 @@ Convert dictionary to AbstractParameters
 function dict2par!(dct::AbstractDict, par::AbstractParameters)
     for field in keys(par)
         parameter = getfield(par, field)
-        try
-            if field ∉ keys(dct)
-                # this can happen when par is newer than dct
-                continue
-            end
-            if dct[field] === nothing
-                continue
-            elseif typeof(parameter) <: AbstractParameters
-                dict2par!(dct[field], parameter)
-            elseif typeof(parameter) <: AbstractParametersVector
-                dict2par!(dct[field], parameter)
-            else
-                value = string_decode_value(par, field, dct[field])                
+        if field ∉ keys(dct)
+            # this can happen when par is newer than dct
+            continue
+        end
+        if dct[field] === nothing
+            continue
+        elseif typeof(parameter) <: AbstractParameters
+            dict2par!(dct[field], parameter)
+        elseif typeof(parameter) <: AbstractParametersVector
+            dict2par!(dct[field], parameter)
+        else
+            value = string_decode_value(par, field, dct[field])
+            try
                 setproperty!(par, field, value)
-            end
-        catch e
-            println(stderr, "Error setting parameter `$(spath(parameter))` with: $(repr(dct[field]))")
-            rethrow(e)
+            catch e
+                println(stderr, "Error setting parameter $(spath(parameter))::$(eltype(parameter)) with: `$(value)`::$(typeof(value))")
+                rethrow(e)
+            end                
         end
     end
     return par
@@ -448,54 +448,51 @@ end
 function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
     parameter = getfield(par, field)
     tp = typeof(parameter).parameters[1]
-    if tp <: Enum
-        if typeof(value) <: Int
-            value = Symbol(string(tp(value))[2:end-1])
-        elseif typeof(value) <: String
-            value = Symbol(value[2:end])
+
+    if typeof(value) <: String && startswith(value, "\"") && endswith(value, "\"")
+        value = value[2:end-1]
+    end
+
+    if value === nothing
+        value = missing
+    elseif typeof(value)<:String && startswith(value, ":")
+        value = Symbol(value[2:end])
+    elseif tp <: Enum && typeof(value) <: Int
+        value = Symbol(string(tp(value))[2:end-1])
+    elseif tp <: Measurement && typeof(value) <: AbstractString
+        v, e = split(value, "±")
+        value = parse(Float64, v) ± parse(Float64, e)
+    elseif tp <: AbstractRange || (tp <: AbstractVector && typeof(value) <: String && contains(value, ":"))
+        if typeof(value) <: AbstractString
+            parts = split(value, ":")
+            start = parse(Float64, parts[1])
+            step = parse(Float64, parts[2])
+            stop = parse(Float64, parts[3])
+        else
+            start = value[1]
+            step = length(value)
+            stop = value[end]
         end
-    else
-        if value === nothing
-            value = missing
-        elseif tp <: Measurement
-            if typeof(value) <: AbstractString
-                v, e = split(value, "±")
-                value = parse(Float64, v) ± parse(Float64, e)
-            end
-        elseif tp <: AbstractRange || (tp <: AbstractVector && typeof(value) <: String && contains(value, ":"))
-            if typeof(value) <: AbstractString
-                parts = split(value, ":")
-                start = parse(Float64, parts[1])
-                step = parse(Float64, parts[2])
-                stop = parse(Float64, parts[3])
-            else
-                start = value[1]
-                step = length(value)
-                stop = value[end]
-            end
-            value = start:step:stop
-        elseif typeof(value) <: AbstractVector
-            if typeof(tp) <: Union
-                etp = eltype([etp for etp in Base.uniontypes(tp) if etp <: AbstractVector][1])
-            else
-                etp = eltype(tp)
-            end
-            if !isempty(value)
-                value = etp.(value)
-            else
-                value = Vector{etp}()
-            end
-            if tp <: Tuple
-                value = tuple(map((val, target_type) -> convert(target_type, val), value, tp.parameters)...)
-            end
-        elseif typeof(value) <: String && !isempty(value) && startswith(value, ':')
-            value = Symbol(value[2:end])
-        elseif tp <: Tuple
-            expr = Meta.parse(value)
-            value = tuple(map((x, target_type) -> convert(target_type, eval(x)), expr.args, tp.parameters)...)
-        elseif tp <: Bool && typeof(value) <: Int
-            value = Bool(value)
+        value = start:step:stop
+    elseif typeof(value) <: AbstractVector
+        if typeof(tp) <: Union
+            etp = eltype([etp for etp in Base.uniontypes(tp) if etp <: AbstractVector][1])
+        else
+            etp = eltype(tp)
         end
+        if !isempty(value)
+            value = etp.(value)
+        else
+            value = Vector{etp}()
+        end
+        if tp <: Tuple
+            value = tuple(map((val, target_type) -> convert(target_type, val), value, tp.parameters)...)
+        end
+    elseif tp <: Tuple
+        expr = Meta.parse(value)
+        value = tuple(map((x, target_type) -> convert(target_type, eval(x)), expr.args, tp.parameters)...)
+    elseif tp <: Bool && typeof(value) <: Int
+        value = Bool(value)
     end
     return value
 end
