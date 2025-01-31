@@ -9,9 +9,9 @@ mutable struct Switch{T} <: AbstractParameter{T}
     options::AbstractDict{<:Any,SwitchOption}
     units::String
     description::String
-    value::Union{Missing,Function,T}
-    base::Union{Missing,Function,T}
-    default::Union{Missing,Function,T}
+    value::Union{Missing,Function,TimeData{T},T}
+    base::Union{Missing,Function,TimeData{T},T}
+    default::Union{Missing,T}
     opt::Union{Missing,OptParameter}
     check::Union{Nothing,Function}
 end
@@ -53,7 +53,7 @@ function Base.setproperty!(p::Switch, field::Symbol, switch_value)
         setfield!(p, :value, missing)
     elseif switch_value in keys(p.options)
         setfield!(p, :value, p.options[switch_value].value)
-    elseif typeof(switch_value) <: Function
+    elseif typeof(switch_value) <: Union{Function,TimeData}
         setfield!(p, :value, switch_value)
     else
         throw(BadParameterException(path(p), switch_value, p.units, collect(keys(p.options))))
