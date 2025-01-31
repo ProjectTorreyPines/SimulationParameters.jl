@@ -312,7 +312,7 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
                 setproperty!(par, field, value)
             end
         catch e
-            println(stderr, "Error setting parameter $(spath(parameter)) with $(dct[field])")
+            println(stderr, "Error setting parameter `$(spath(parameter))` with: $(repr(dct[field]))")
             rethrow(e)
         end
     end
@@ -451,6 +451,8 @@ function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
     if tp <: Enum
         if typeof(value) <: Int
             value = Symbol(string(tp(value))[2:end-1])
+        elseif typeof(value) <: String
+            value = Symbol(value[2:end])
         end
     else
         if value === nothing
@@ -486,7 +488,7 @@ function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
             if tp <: Tuple
                 value = tuple(map((val, target_type) -> convert(target_type, val), value, tp.parameters)...)
             end
-        elseif typeof(value) <: String && !isempty(value) && value[1] == ':'
+        elseif typeof(value) <: String && !isempty(value) && startswith(value, ':')
             value = Symbol(value[2:end])
         elseif tp <: Tuple
             expr = Meta.parse(value)
