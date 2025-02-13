@@ -431,7 +431,7 @@ function string_encode_value(par::AbstractParameters, field::Symbol)
         str_enum = string(value)
         return ":$(str_enum[2:end-1])"
     elseif tp <: AbstractRange || typeof(value) <: AbstractRange
-        return "$(Float64(value.offset)):$(Float64(value.step)):$(Float64(value.offset+value.len))"
+        return "$(Float64(value.ref)):$(Float64(value.step)):$(Float64(value.ref+value.step*(value.len - 1)))"
     elseif tp <: Symbol || typeof(value) <: Symbol
         return ":$value"
     elseif tp <: Vector{Symbol}
