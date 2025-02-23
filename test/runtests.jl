@@ -302,6 +302,19 @@ end
     @test diff(ini, ini2) === false
 end
 
+@testset "hdf_save_load" begin
+    ini = ParametersInits()
+
+    tmp_hdf_filename = tempname()
+    par2hdf(ini, tmp_hdf_filename)
+
+    ini2 = hdf2par(tmp_hdf_filename, ParametersInits())
+
+    @test diff(ini, ini2) === false
+
+    isfile(tmp_hdf_filename) && rm(tmp_hdf_filename)
+end
+
 @testset "checks" begin
     ini = ParametersInits()
 
