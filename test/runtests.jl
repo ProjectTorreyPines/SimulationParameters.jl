@@ -32,6 +32,7 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T<:Real} <: ParametersIni
     _parent::WeakRef = WeakRef(nothing)
     _name::Symbol = :equilibrium
     R0::Entry{T} = Entry{T}("m", "Geometric center of the plasma"; check=x -> (@assert x > 0 "R0 must be >0"))
+    Z0::Entry{T} = Entry{T}("m", "Geometric center of the plasma")
     casename::Entry{String} = Entry{String}("-", "Mnemonic name of the case being run")
     init_from::Switch{Symbol} = Switch{Symbol}(
         [
@@ -305,12 +306,29 @@ end
 @testset "hdf_save_load" begin
     ini = ParametersInits()
 
-    tmp_hdf_filename = tempname()
+    ini.equilibrium.R0 = 5.0 ↔ [1.0, 10.0]
+    ini.equilibrium.Z0 = 0.0 ↔ SimulationParameters.Distributions.Normal(0.0, 2.0)
+    ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
+
+    tmp_hdf_filename = tempname()*".h5"
     par2hdf(ini, tmp_hdf_filename)
 
     ini2 = hdf2par(tmp_hdf_filename, ParametersInits())
 
     @test diff(ini, ini2) === false
+
+    # Verify that the opt-parameter properties are randomized by `rand(ini2)`.
+    # Save original values to compare against random samples.
+    ori_R0 = deepcopy(ini2.equilibrium.R0)
+    ori_Z0 = deepcopy(ini2.equilibrium.Z0)
+    ori_init_from = deepcopy(ini2.equilibrium.init_from)
+
+    # Over N random samples, at least one value should differ from the original,
+    # indicating that the parameters are being randomized.
+    N=100
+    @test any([ori_R0 != rand(ini2).equilibrium.R0 for _ in 1:N])
+    @test any([ori_Z0 != rand(ini2).equilibrium.Z0 for _ in 1:N])
+    @test any([ori_init_from != rand(ini2).equilibrium.init_from for _ in 1:N])
 
     isfile(tmp_hdf_filename) && rm(tmp_hdf_filename)
 end

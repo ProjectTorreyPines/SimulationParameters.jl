@@ -5,6 +5,7 @@ version = "1.3.1"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 IMASutils = "b8e4ee59-9bed-3a6a-a553-8dd24d6374ad"
@@ -16,6 +17,7 @@ YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
 AbstractTrees = "0.4"
+Dates = "1.11.0"
 Distributions = "0.25.113"
 HDF5 = "0.17.2"
 IMASutils = "1.1.2"
