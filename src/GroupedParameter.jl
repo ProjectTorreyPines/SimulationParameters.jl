@@ -40,11 +40,13 @@ function grouping_parameters(multi_pars::Vector{<:AbstractParameter})
     for par in multi_pars
         key_name = spath(par)
         if haskey(parameter_map, key_name)
-            if string(parameter_map[key_name].opt) != string(par.opt)
+            if !isequal(parameter_map[key_name].opt, par.opt)
                 error("Some of $key_name have different opt parameters\n" *
                       "  [1]: $(parameter_map[key_name].opt)\n" *
                       "  [2]: $(par.opt)")
             end
+        else
+            parameter_map[key_name] = par
         end
 
         if typeof(par.opt) <: OptParameterChoice
@@ -55,7 +57,6 @@ function grouping_parameters(multi_pars::Vector{<:AbstractParameter})
             push!(get!(values_map, key_name, Vector{eltype(par.value)}()), par.value)
         end
 
-        parameter_map[key_name] = par
     end
 
     # Build the grouped parameters vector from the dictionaries
