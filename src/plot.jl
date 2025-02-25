@@ -128,13 +128,13 @@ end
     end
 end
 
-mutable struct CollectedParameter{T}
+mutable struct GroupedParameter{T}
     parameter::AbstractParameter
     values::Vector{T}
 end
 
-function grouping_multi_parameters(multi_pars::Vector{<:AbstractParameter})
-    collected = CollectedParameter[]
+function grouping_parameters(multi_pars::Vector{<:AbstractParameter})
+    collected = GroupedParameter[]
 
     # Dictionaries to store values and the corresponding parameter for each key
     values_map = Dict{String, Vector{<:Real}}()
@@ -162,13 +162,13 @@ function grouping_multi_parameters(multi_pars::Vector{<:AbstractParameter})
     # Build the collected parameters vector from the dictionaries
     sorted_keys = sort(collect(keys(values_map)))
     for key in sorted_keys
-        push!(collected, CollectedParameter(parameter_map[key], values_map[key]))
+        push!(collected, GroupedParameter(parameter_map[key], values_map[key]))
     end
 
     return collected
 end
 
-@recipe function plot_CollectedParameters(CPs::Vector{CollectedParameter}; nrows=:auto, ncols=:auto, each_size=(500, 400))
+@recipe function plot_GroupedParameters(CPs::Vector{GroupedParameter}; nrows=:auto, ncols=:auto, each_size=(500, 400))
 
     layout_val, size_val = compute_layout(length(CPs), nrows, ncols, each_size, plotattributes)
     layout := layout_val
@@ -186,21 +186,21 @@ end
     end
 end
 
-@recipe function plot_CollectedParameter(CP::CollectedParameter)
+@recipe function plot_GroupedParameter(CP::GroupedParameter)
     @series begin
         CP.parameter, CP.values
     end
 end
 
 @recipe function plot_parameters_multi(pars_vec_vec::Vector{<:Vector{<:AbstractParameter}})
-    collected_parameters = grouping_multi_parameters(reduce(vcat,pars_vec_vec))
+    collected_parameters = grouping_parameters(reduce(vcat,pars_vec_vec))
     @series begin
         collected_parameters
     end
 end
 
 @recipe function plot_parameters(pars_vec::Vector{<:AbstractParameter})
-    collected_parameters = grouping_multi_parameters(pars_vec)
+    collected_parameters = grouping_parameters(pars_vec)
     @series begin
         collected_parameters
     end

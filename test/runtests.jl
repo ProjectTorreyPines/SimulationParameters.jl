@@ -387,23 +387,23 @@ end
     plot(opt_parameters.(inis[1:101]))
     plot(opt_parameters.(inis))
 
-    collected_params = SimulationParameters.grouping_multi_parameters(reduce(vcat,opt_parameters.(inis)))
-
+    # GPs = Vector{GroupedParameter}
+    GPs = SimulationParameters.grouping_parameters(reduce(vcat,opt_parameters.(inis)))
 
     # keywords test
-    plot(opt_parameters.(inis); flag_nominal_label=false)
-    plot(opt_parameters.(inis); nrows=1)
-    plot(opt_parameters.(inis); ncols=1)
-    plot(opt_parameters.(inis); nrows=2, ncols=3)
-    plot(opt_parameters.(inis); layout=Plots.GridLayout(2,3))
-    plot(opt_parameters.(inis); layout=(2,3))
-    plot(opt_parameters.(inis); layout=length(collected_params))
+    plot(GPs; flag_nominal_label=false)
+    plot(GPs; nrows=1)
+    plot(GPs; ncols=1)
+    plot(GPs; nrows=2, ncols=3)
+    plot(GPs; layout=Plots.GridLayout(2,3))
+    plot(GPs; layout=(2,3))
+    plot(GPs; layout=length(GPs))
 
     # For more coverage
     plot(getfield(ini.equilibrium,:init_from))
     plot(getfield(ini.equilibrium,:R0))
     plot(getfield(ini.equilibrium,:B0))
 
-    @test_throws Exception plot(collected_params; layout=@layout([a b c])) # @layout is not supported
+    @test_throws Exception plot(GPs; layout=@layout([a b c])) # @layout is not supported
 
 end
