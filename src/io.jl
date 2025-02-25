@@ -340,11 +340,19 @@ NOTE: kw arguments are passed to HDF5.h5open
 """
 function par2hdf(@nospecialize(par::AbstractParameters), filename::String; kw...)
     HDF5.h5open(filename, "w"; kw...) do fid
+        attr = HDF5.attrs(fid)
+        attr["SimulationParameters_version"] = string(pkgversion(SimulationParameters))
+        attr["date_time"] = Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS")
         return par2hdf!(par, fid)
     end
 end
 
 function par2hdf!(@nospecialize(par::AbstractParameters), gparent::Union{HDF5.File,HDF5.Group})
+    # Add metadata to group's attributes
+    attr = HDF5.attrs(gparent)
+    attr["abstract_type"] = "AbstractParameters"
+    attr["concrete_type"] = string(typeof(par))
+
     for field in keys(par)
         parameter = getfield(par, field)
         if typeof(parameter) <: Union{AbstractParameters,AbstractParametersVector}
@@ -356,9 +364,19 @@ function par2hdf!(@nospecialize(par::AbstractParameters), gparent::Union{HDF5.Fi
                 continue
             elseif typeof(value) <: AbstractString
                 HDF5.write(gparent, string(field), value)
+                attr = HDF5.attrs(gparent[string(field)])
+                attr["concrete_type"] = string(eltype(parameter))
+                attr["units"] = parameter.units
+                attr["description"] = parameter.description
+                attr["opt"] = clean_opt_string(parameter.opt)
             else
                 dset = HDF5.create_dataset(gparent, string(field), eltype(value), size(value))
                 HDF5.write(dset, value)
+                attr = HDF5.attrs(dset)
+                attr["concrete_type"] = string(eltype(parameter))
+                attr["units"] = parameter.units
+                attr["description"] = parameter.description
+                attr["opt"] = clean_opt_string(parameter.opt)
             end
         else
             error("par2hdf! $(field) should not be here, with $(typeof(parameter))")
@@ -366,7 +384,34 @@ function par2hdf!(@nospecialize(par::AbstractParameters), gparent::Union{HDF5.Fi
     end
 end
 
+function clean_opt_string(opt::Union{OptParameter,Missing})::String
+    if typeof(opt) <: OptParameterDistribution
+        clean_dist_str = remove_keywords_before_semicolon(string(opt.dist))
+        return "$(typeof(opt))($(opt.nominal), $clean_dist_str)"
+    else
+        return string(opt)
+    end
+end
+
+function remove_keywords_before_semicolon(s::String)::String
+    # Split the string at the first semicolon (if present)
+    parts = split(s, ";", limit=2)
+    pre = parts[1]
+    post = length(parts) > 1 ? parts[2] : ""
+    # Regex to match a keyword:
+    # one or more Unicode letters or underscores followed by optional whitespace and "="
+    kw_regex = r"[\p{L}_][\p{L}\p{N}_]*\s*="
+    # Replace the keyword patterns in the pre-semicolon part
+    pre_fixed = replace(pre, kw_regex => "")
+
+    return isempty(post) ? pre_fixed : pre_fixed * ";" * post
+end
+
 function par2hdf!(@nospecialize(par::AbstractParametersVector), gparent::Union{HDF5.File,HDF5.Group})
+    # Add metadata to group's attributes
+    attr = HDF5.attrs(gparent)
+    attr["abstract_type"] = "AbstractParametersVector"
+    attr["concrete_type"] = string(typeof(par))
     for (index, parameter) in enumerate(par)
         g = HDF5.create_group(gparent, string(index))
         par2hdf!(parameter, g)
@@ -390,6 +435,16 @@ function hdf2par(gparent::Union{HDF5.File,HDF5.Group}, @nospecialize(par::Abstra
         if typeof(gparent[field]) <: HDF5.Dataset
             value = string_decode_value(par, Symbol(field), read(gparent, field))
             setproperty!(par, Symbol(field), value)
+
+            entryObj = getfield(par, Symbol(field))
+            attr = HDF5.attrs(gparent[field])
+            if "opt" in keys(attr)
+                try
+                    setfield!(entryObj, :opt, eval(Meta.parse(attr["opt"])))
+                catch
+                    @warn "$(attr["opt"]) is not a valid OptParameter"
+                end
+            end
         else
             hdf2par(gparent[field], getproperty(par, Symbol(field)))
         end
