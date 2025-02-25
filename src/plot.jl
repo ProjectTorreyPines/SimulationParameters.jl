@@ -128,46 +128,6 @@ end
     end
 end
 
-mutable struct GroupedParameter{T}
-    parameter::AbstractParameter
-    values::Vector{T}
-end
-
-function grouping_parameters(multi_pars::Vector{<:AbstractParameter})
-    collected = GroupedParameter[]
-
-    # Dictionaries to store values and the corresponding parameter for each key
-    values_map = Dict{String, Vector{<:Real}}()
-    parameter_map = Dict{String, AbstractParameter}()
-
-    # Iterate over each vector of parameters
-    for par in multi_pars
-        key_name = spath(par)
-        # if typeof(par.value) <: Real
-        if typeof(par.opt) <: OptParameterChoice
-            idx = findfirst(par.opt.choices.==par.value)
-            isempty(idx) ? error("$(spath(par)) value $(par.value) not found in $(par.opt.choices)") : nothing
-            push!(get!(values_map, key_name, Vector{typeof(idx)}()),idx)
-        else
-            push!(get!(values_map, key_name, Vector{eltype(par.value)}()), par.value)
-        end
-        if haskey(parameter_map, key_name)
-            if string(parameter_map[key_name].opt) != string(par.opt)
-                error("$key_name has different opt parameters")
-            end
-        end
-        parameter_map[key_name] = par
-    end
-
-    # Build the collected parameters vector from the dictionaries
-    sorted_keys = sort(collect(keys(values_map)))
-    for key in sorted_keys
-        push!(collected, GroupedParameter(parameter_map[key], values_map[key]))
-    end
-
-    return collected
-end
-
 @recipe function plot_GroupedParameters(CPs::Vector{GroupedParameter}; nrows=:auto, ncols=:auto, each_size=(500, 400))
 
     layout_val, size_val = compute_layout(length(CPs), nrows, ncols, each_size, plotattributes)

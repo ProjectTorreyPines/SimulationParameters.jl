@@ -24,6 +24,8 @@ include("utils.jl")
 
 include("optim.jl")
 
+include("GroupedParameter.jl")
+
 include("show.jl")
 
 include("plot.jl")

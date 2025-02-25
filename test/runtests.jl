@@ -361,6 +361,26 @@ end
     InteractiveUtils.@code_warntype test_me(ini)
 end
 
+@testset "GroupedParameter" begin
+    ini = ParametersInits()
+    ini.equilibrium.R0 = 5.0 ↔ [1.0, 10.0]
+    ini.equilibrium.Z0 = 0.0 ↔ SimulationParameters.Distributions.Normal(0.0, 2.0)
+    ini.equilibrium.B0 = 2.0 ↔ (-2.0, +2.0)
+    ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
+    ini.equilibrium.casename="case1"↔("case1", "case2", "case3")
+
+    inis = [rand(ini) for _ in 1:200]
+
+    GPs = grouping_parameters(ini)
+    GPs = grouping_parameters(inis[1:3])
+    GPs = grouping_parameters(inis)
+    GPs = grouping_parameters([inis[1:3], inis[4:6]])
+    GPs = grouping_parameters(ini, inis, ini, inis)
+
+
+    inis[1].equilibrium.R0 = 2.0 ↔ (1.0, 2.0)
+    @test_throws Exception GPs = grouping_parameters(inis)
+end
 
 @testset "plot_recipes" begin
     ini = ParametersInits()
@@ -381,14 +401,17 @@ end
     plot(ini.equilibrium)
     plot(ini.equilibrium,:R0)
 
-    plot(opt_parameters(inis[1]))
-    plot(opt_parameters.(inis[1:10]))
-    plot(opt_parameters.(inis[1:50]))
-    plot(opt_parameters.(inis[1:101]))
-    plot(opt_parameters.(inis))
+    plot(grouping_parameters(inis[1]))
+    plot(grouping_parameters(inis[1:10]))
+    plot(grouping_parameters(inis[1:50]))
+    plot(grouping_parameters(inis[1:101]))
+    plot(grouping_parameters(inis))
 
     # GPs = Vector{GroupedParameter}
-    GPs = SimulationParameters.grouping_parameters(reduce(vcat,opt_parameters.(inis)))
+    GPs = grouping_parameters(inis)
+    plot(GPs)
+    plot(GPs[1])
+    plot(GPs[1:3])
 
     # keywords test
     plot(GPs; flag_nominal_label=false)
