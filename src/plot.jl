@@ -128,41 +128,30 @@ end
     end
 end
 
-mutable struct CollectedParameter
+mutable struct CollectedParameter{T}
     parameter::AbstractParameter
-    values::Union{Vector{<:Real},Vector{Symbol}}
+    values::Vector{T}
 end
 
-# function Base.show(io::IO, CP::CollectedParameter)
-#     # return print(io, "$(CP.parameter), $(CP.values)")
-#     print(io, "CollectedParameter(")
-#     Base.show(io, CP.parameter)
-#     print(io, ", ")
-#     Base.show(io, CP.values)
-#     print(io, ")")
-#     println(io)
-# end
-
-# Process a 2D vector of parameters by grouping values for parameters with the same key
-function grouping_multi_parameters(multi_pars::Vector{<:Vector{<:AbstractParameter}})
+function grouping_multi_parameters(multi_pars::Vector{<:AbstractParameter})
     collected = CollectedParameter[]
 
     # Dictionaries to store values and the corresponding parameter for each key
-    values_map = Dict{String, Union{Vector{<:Real},Vector{Symbol}}}()
+    values_map = Dict{String, Vector{<:Real}}()
     parameter_map = Dict{String, AbstractParameter}()
 
     # Iterate over each vector of parameters
-    for pars in multi_pars
-        for par in pars
-            key_name = spath(par)
-            # Automatically initialize a new vector if the key does not exist
-            if typeof(par.value) <: Real
-                push!(get!(values_map, key_name, Vector{Real}()), par.value)
-            elseif typeof(par.value) <: Symbol
-                push!(get!(values_map, key_name, Vector{Symbol}()), par.value)
-            end
-            parameter_map[key_name] = par
+    for par in multi_pars
+        key_name = spath(par)
+        if typeof(par.value) <: Real
+            push!(get!(values_map, key_name, Vector{Real}()), par.value)
+        elseif typeof(par.value) <: Symbol
+            idx = findfirst(par.opt.choices.==par.value)
+            isempty(idx) ? error("$(spath(par)) value $(par.value) not found in $(par.opt.choices)") : nothing
+
+            push!(get!(values_map, key_name, Vector{Real}()),idx)
         end
+        parameter_map[key_name] = par
     end
 
     # Build the collected parameters vector from the dictionaries
@@ -192,49 +181,26 @@ end
 end
 
 @recipe function plot_CollectedParameter(CP::CollectedParameter)
-    plotattributes[:flag_sampled_label] = length(CP.values)==1 ? true : false
     @series begin
         CP.parameter, CP.values
     end
 end
 
-@recipe function plot_parameters_multi(pars_vec::Vector{<:Vector{<:AbstractParameter}})
-    plotattributes[:flag_pdf] = true
-    plotattributes[:flag_nominal_label] = true
-    plotattributes[:flag_sampled_label] = false
-
-    for (k, pars) in pairs(pars_vec)
-        if k>=2
-            plotattributes[:flag_pdf] = false
-            plotattributes[:flag_nominal_label] = false
-            plotattributes[:flag_sampled_label] = false
-        end
-        @series begin
-            pars
-        end
+@recipe function plot_parameters_multi(pars_vec_vec::Vector{<:Vector{<:AbstractParameter}})
+    collected_parameters = grouping_multi_parameters(reduce(vcat,pars_vec_vec))
+    @series begin
+        collected_parameters
     end
 end
 
-
-@recipe function plot_parameters(pars::Vector{<:AbstractParameter}; nrows=:auto, ncols=:auto, each_size=(500, 400))
-
-    layout_val, size_val = compute_layout(length(pars), nrows, ncols, each_size, plotattributes)
-    layout := layout_val
-    size := size_val
-
-    legend_position --> :best
-    left_margin --> [10 * Plots.Measures.mm 10 * Plots.Measures.mm]
-    bottom_margin --> 10 * Plots.Measures.mm
-
-    for (k, par) in pairs(pars)
-        @series begin
-            subplot := k
-            par
-        end
+@recipe function plot_parameters(pars_vec::Vector{<:AbstractParameter})
+    collected_parameters = grouping_multi_parameters(pars_vec)
+    @series begin
+        collected_parameters
     end
 end
 
-@recipe function plot_Entry(ety::Entry, multi_values::Union{Vector{<:Real},Vector{Symbol}}=[])
+@recipe function plot_Entry(ety::Entry, multi_values::Vector{<:Real}=[])
 
     title --> spath(ety)
     yguide --> "Probability Density"
@@ -259,7 +225,11 @@ end
         end
 
         if get(plotattributes, :flag_sampled_label, true)
-            label_name = "sampled value (≈"*@sprintf("%.3g",ety.value)*")"
+            if length(multi_values)==1
+                label_name = "sampled value (≈"*@sprintf("%.3g",ety.value)*")"
+            else
+                label_name = "samples"
+            end
         else
             label_name = ""
         end
@@ -284,7 +254,7 @@ end
             counts_vec = zeros(Int, N_choices)
             counts_vec[findfirst(ety.opt.choices.==ety.value)] = 1
         else
-            counts_vec = [count(==(choice), multi_values) for choice in ety.opt.choices]
+            counts_vec = [count(==(idx), multi_values) for idx in 1:length(ety.opt.choices)]
         end
 
         @series begin
@@ -293,7 +263,7 @@ end
     end
 end
 
-@recipe function plot_Switch(sw::Switch, multi_values::Union{Vector{<:Real},Vector{Symbol}}=[])
+@recipe function plot_Switch(sw::Switch, multi_values::Vector{<:Real}=[])
     title --> spath(sw)
     yguide := "Counts"
     if isempty(multi_values)
@@ -301,7 +271,7 @@ end
         counts_vec = zeros(Int, N_choices)
         counts_vec[findfirst(sw.opt.choices.==sw.value)] = 1
     else
-        counts_vec = [count(==(choice), multi_values) for choice in sw.opt.choices]
+        counts_vec = [count(==(idx), multi_values) for idx in 1:length(sw.opt.choices)]
     end
 
     xtickfontsize --> 12
@@ -417,7 +387,6 @@ end
     xx = isfinite(opt.dist.upper) ? vcat(xx, opt.dist.upper) : xx
     yy = isfinite(opt.dist.upper) ? vcat(yy, 0.0) : yy
 
-
     ylims --> (0, :auto)
     yguide --> "Probability Density"
     if get(plotattributes, :flag_pdf, true)
@@ -432,9 +401,6 @@ end
         opt.nominal, Val{:nominal}
     end
 end
-
-
-
 
 function compute_layout(Nlength, nrows, ncols, each_size, plotattributes)
     my_layout = get(plotattributes, :layout) do
