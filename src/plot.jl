@@ -235,7 +235,17 @@ end
             ylims--> (0, 1.5*maximum(y_vals))
         elseif ety.opt isa OptParameterDistribution
             y_vals = Distributions.pdf.(ety.opt.dist, x_vals)
-            ylims--> (0, 1.3*maximum(y_vals))
+
+            # Calculate maximum ylim to enusre that graph can show the whole distribution
+            dist = ety.opt.dist
+            lower = Distributions.minimum(dist)
+            upper = Distributions.maximum(dist)
+            lbound = isfinite(lower) ? lower : Distributions.quantile(dist, 0.001)
+            rbound = isfinite(upper) ? upper : Distributions.quantile(dist, 0.999)
+            test_xx = collect(range(lbound, rbound, length=200))
+            test_yy = Distributions.pdf.(dist, test_xx)
+
+            ylims--> (0, 1.3*maximum(test_yy))
         end
 
         if get(plotattributes, :flag_sampled_label, true)
@@ -422,8 +432,8 @@ end
 
 @recipe function plot_OptParameterDistribution(opt::OptParameterDistribution)
 
-    lower = Distributions.quantile(opt.dist, 0)
-    upper = Distributions.quantile(opt.dist, 1)
+    lower = Distributions.minimum(opt.dist)
+    upper = Distributions.maximum(opt.dist)
 
     lbound = isfinite(lower) ? lower : Distributions.quantile(opt.dist, 0.001)
     rbound = isfinite(upper) ? upper : Distributions.quantile(opt.dist, 0.999)
