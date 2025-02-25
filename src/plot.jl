@@ -153,7 +153,7 @@ end
 end
 
 @recipe function plot_parameters_multi(pars_vec_vec::Vector{<:Vector{<:AbstractParameter}})
-    collected_parameters = grouping_parameters(reduce(vcat,pars_vec_vec))
+    collected_parameters = grouping_parameters(reduce(vcat, pars_vec_vec))
     @series begin
         collected_parameters
     end
@@ -173,7 +173,7 @@ end
     else
         unit_name = "[$(ety.units)]"
     end
-    title --> spath(ety)*" $unit_name"
+    title --> spath(ety) * " $unit_name"
     titlefontsize --> 16
     yguide --> "Probability Density"
 
@@ -191,8 +191,8 @@ end
         end
 
         if ety.opt isa OptParameterRange
-            y_vals = ones(size(x_vals)).*[1.0./(ety.opt.upper-ety.opt.lower)]
-            ylims--> (0, 1.5*maximum(y_vals))
+            y_vals = ones(size(x_vals)) .* [1.0 ./ (ety.opt.upper - ety.opt.lower)]
+            ylims --> (0, 1.5 * maximum(y_vals))
         elseif ety.opt isa OptParameterDistribution
             y_vals = Distributions.pdf.(ety.opt.dist, x_vals)
 
@@ -202,15 +202,15 @@ end
             upper = Distributions.maximum(dist)
             lbound = isfinite(lower) ? lower : Distributions.quantile(dist, 0.001)
             rbound = isfinite(upper) ? upper : Distributions.quantile(dist, 0.999)
-            test_xx = collect(range(lbound, rbound, length=200))
+            test_xx = collect(range(lbound, rbound; length=200))
             test_yy = Distributions.pdf.(dist, test_xx)
 
-            ylims--> (0, 1.3*maximum(test_yy))
+            ylims --> (0, 1.3 * maximum(test_yy))
         end
 
         if get(plotattributes, :flag_sampled_label, true)
-            if length(multi_values)==1
-                label_name = "sampled value (≈"*@sprintf("%.3g",ety.value)*")"
+            if length(multi_values) == 1
+                label_name = "sampled value (≈" * @sprintf("%.3g", ety.value) * ")"
             else
                 label_name = "$(length(x_vals)) samples"
             end
@@ -230,8 +230,8 @@ end
 
         if length(x_vals) >= 20
 
-            nbins = min(30, ceil(Int,length(x_vals)/5))
-            my_bin_edges = range(minimum(x_vals), stop=maximum(x_vals), length=nbins+1)
+            nbins = min(30, ceil(Int, length(x_vals) / 5))
+            my_bin_edges = range(minimum(x_vals); stop=maximum(x_vals), length=nbins + 1)
             @series begin
                 seriestype --> :histogram
                 normalize --> :pdf
@@ -253,7 +253,7 @@ end
         if isempty(multi_values)
             N_choices = length(ety.opt.choices)
             counts_vec = zeros(Int, N_choices)
-            counts_vec[findfirst(ety.opt.choices.==ety.value)] = 1
+            counts_vec[findfirst(ety.opt.choices .== ety.value)] = 1
         else
             counts_vec = [count(==(idx), multi_values) for idx in 1:length(ety.opt.choices)]
         end
@@ -270,13 +270,13 @@ end
     else
         unit_name = "[$(sw.units)]"
     end
-    title --> spath(sw)*" $unit_name"
+    title --> spath(sw) * " $unit_name"
     titlefontsize --> 16
     yguide := "Counts"
     if isempty(multi_values)
         N_choices = length(sw.opt.choices)
         counts_vec = zeros(Int, N_choices)
-        counts_vec[findfirst(sw.opt.choices.==sw.value)] = 1
+        counts_vec[findfirst(sw.opt.choices .== sw.value)] = 1
     else
         counts_vec = [count(==(idx), multi_values) for idx in 1:length(sw.opt.choices)]
     end
@@ -292,8 +292,8 @@ end
 @recipe function plot_OptParameterChoice(opt::OptParameterChoice, Nsamples::Int=1)
     N_choices = length(opt.choices)
 
-    xlims --> (0.5, N_choices+0.5)
-    ylims --> (0, min(1.0, 1.5/N_choices))
+    xlims --> (0.5, N_choices + 0.5)
+    ylims --> (0, min(1.0, 1.5 / N_choices))
     yguide := "Counts"
 
     xticks --> (1:N_choices, opt.choices)
@@ -307,11 +307,11 @@ end
             linewidth --> 3.5
             color --> :red
             label --> "PDF"
-            [1/N_choices]*Nsamples
+            [1 / N_choices] * Nsamples
         end
     end
 
-    nominal_value = findfirst(opt.choices.==opt.nominal)
+    nominal_value = findfirst(opt.choices .== opt.nominal)
     @series begin
         if get(plotattributes, :flag_nominal_label, true)
             label --> "nominal value ($(opt.nominal))"
@@ -326,11 +326,11 @@ end
 
     N_choices = length(opt.choices)
 
-    xlims --> (0.5, N_choices+0.5)
-    ylims --> (0, 1.3*maximum(counts_vec))
+    xlims --> (0.5, N_choices + 0.5)
+    ylims --> (0, 1.3 * maximum(counts_vec))
     xticks --> (1:N_choices, opt.choices)
 
-    annotations --> [ (i, 0.5*v , Plots.text(string(v), :center, 10, "black")) for (i, v) in enumerate(counts_vec) if v > 0]
+    annotations --> [(i, 0.5 * v, Plots.text(string(v), :center, 10, "black")) for (i, v) in enumerate(counts_vec) if v > 0]
     @series begin
         seriestype --> :bar
         label --> ""
@@ -349,7 +349,7 @@ end
     @series begin
         seriestype --> :vline
         if get(plotattributes, :flag_nominal_label, true)
-            label --> "nominal value (≈"*@sprintf("%.3g",value)*")"
+            label --> "nominal value (≈" * @sprintf("%.3g", value) * ")"
         else
             label --> ""
         end
@@ -363,7 +363,7 @@ end
 
 @recipe function plot_OptParameterRange(opt::OptParameterRange)
 
-    uniform_pdf_val = 1.0./(opt.upper-opt.lower)
+    uniform_pdf_val = 1.0 ./ (opt.upper - opt.lower)
 
     xx = [opt.lower, opt.lower, opt.upper, opt.upper]
     yy = [0.0, uniform_pdf_val, uniform_pdf_val, 0.0]
@@ -398,7 +398,7 @@ end
     lbound = isfinite(lower) ? lower : Distributions.quantile(opt.dist, 0.001)
     rbound = isfinite(upper) ? upper : Distributions.quantile(opt.dist, 0.999)
 
-    xx = collect(range(lbound, rbound, length=200))
+    xx = collect(range(lbound, rbound; length=200))
     yy = Distributions.pdf.(opt.dist, xx)
 
     xx = isfinite(lower) ? vcat(lower, xx) : xx
@@ -466,11 +466,11 @@ function compute_layout(Nlength, nrows, ncols, each_size, plotattributes)
 end
 
 function compute_marker_size(nsample::Integer; max_size::Float64=15.0, min_size::Float64=7.0, max_Nsample::Integer=60)
-    s = max_size - (max_size-min_size)/max_Nsample* nsample
+    s = max_size - (max_size - min_size) / max_Nsample * nsample
     return clamp(s, min_size, max_size)
 end
 
 function compute_marker_alpha(nsample::Integer; max_α::Float64=0.6, min_α::Float64=0.15, max_Nsample::Integer=60)
-    a = max_α - (max_α-min_α)/max_Nsample * nsample
+    a = max_α - (max_α - min_α) / max_Nsample * nsample
     return clamp(a, min_α, max_α)
 end

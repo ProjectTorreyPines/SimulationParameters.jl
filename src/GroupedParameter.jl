@@ -4,8 +4,7 @@ mutable struct GroupedParameter{T}
     values::Vector{T}
 end
 
-
-function grouping_parameters(args::Union{AbstractVector{<:AbstractParameters}, AbstractParameters}...)
+function grouping_parameters(args::Union{AbstractVector{<:AbstractParameters},AbstractParameters}...)
     converted = Vector{AbstractParameters}()
     for arg in args
         if arg isa AbstractParameters
@@ -19,7 +18,7 @@ function grouping_parameters(args::Union{AbstractVector{<:AbstractParameters}, A
 end
 
 function grouping_parameters(inis_and_acts::AbstractArray{<:AbstractArray{<:AbstractParameters}})
-    return grouping_parameters(reduce(vcat,inis_and_acts))
+    return grouping_parameters(reduce(vcat, inis_and_acts))
 end
 
 function grouping_parameters(ini_or_act::AbstractParameters)
@@ -34,8 +33,8 @@ function grouping_parameters(multi_pars::Vector{<:AbstractParameter})
     GPs = GroupedParameter[]
 
     # Dictionaries to store values and the corresponding parameter for each key
-    values_map = Dict{String, Vector{<:Real}}()
-    parameter_map = Dict{String, AbstractParameter}()
+    values_map = Dict{String,Vector{<:Real}}()
+    parameter_map = Dict{String,AbstractParameter}()
 
     # Iterate over each vector of parameters
     for par in multi_pars
@@ -49,9 +48,9 @@ function grouping_parameters(multi_pars::Vector{<:AbstractParameter})
         end
 
         if typeof(par.opt) <: OptParameterChoice
-            idx = findfirst(par.opt.choices.==par.value)
+            idx = findfirst(par.opt.choices .== par.value)
             isempty(idx) ? error("$(spath(par)) value $(par.value) not found in $(par.opt.choices)") : nothing
-            push!(get!(values_map, key_name, Vector{typeof(idx)}()),idx)
+            push!(get!(values_map, key_name, Vector{typeof(idx)}()), idx)
         else
             push!(get!(values_map, key_name, Vector{eltype(par.value)}()), par.value)
         end

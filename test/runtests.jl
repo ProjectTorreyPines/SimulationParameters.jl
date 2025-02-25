@@ -312,7 +312,7 @@ end
     ini.equilibrium.Z0 = 0.0 ↔ SimulationParameters.Distributions.Normal(0.0, 2.0)
     ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
 
-    tmp_hdf_filename = tempname()*".h5"
+    tmp_hdf_filename = tempname() * ".h5"
     par2hdf(ini, tmp_hdf_filename)
 
     ini2 = hdf2par(tmp_hdf_filename, ParametersInits())
@@ -327,7 +327,7 @@ end
 
     # Over N random samples, at least one value should differ from the original,
     # indicating that the parameters are being randomized.
-    N=100
+    N = 100
     @test any([ori_R0 != rand(ini2).equilibrium.R0 for _ in 1:N])
     @test any([ori_Z0 != rand(ini2).equilibrium.Z0 for _ in 1:N])
     @test any([ori_init_from != rand(ini2).equilibrium.init_from for _ in 1:N])
@@ -367,7 +367,7 @@ end
     ini.equilibrium.Z0 = 0.0 ↔ SimulationParameters.Distributions.Normal(0.0, 2.0)
     ini.equilibrium.B0 = 2.0 ↔ (-2.0, +2.0)
     ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
-    ini.equilibrium.casename="case1"↔("case1", "case2", "case3")
+    ini.equilibrium.casename = "case1" ↔ ("case1", "case2", "case3")
 
     inis = [rand(ini) for _ in 1:200]
 
@@ -390,7 +390,7 @@ end
     ini.equilibrium.B0 = 2.0 ↔ (-2.0, +2.0)
 
     ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
-    ini.equilibrium.casename="case1"↔("case1", "case2", "case3")
+    ini.equilibrium.casename = "case1" ↔ ("case1", "case2", "case3")
     # plot a single ini
     plot(opt_parameters(ini))
 
@@ -399,7 +399,7 @@ end
 
     plot(ini)
     plot(ini.equilibrium)
-    plot(ini.equilibrium,:R0)
+    plot(ini.equilibrium, :R0)
 
     plot(grouping_parameters(inis[1]))
     plot(grouping_parameters(inis[1:10]))
@@ -418,14 +418,14 @@ end
     plot(GPs; nrows=1)
     plot(GPs; ncols=1)
     plot(GPs; nrows=2, ncols=3)
-    plot(GPs; layout=Plots.GridLayout(2,3))
-    plot(GPs; layout=(2,3))
+    plot(GPs; layout=Plots.GridLayout(2, 3))
+    plot(GPs; layout=(2, 3))
     plot(GPs; layout=length(GPs))
 
     # For more coverage
-    plot(getfield(ini.equilibrium,:init_from))
-    plot(getfield(ini.equilibrium,:R0))
-    plot(getfield(ini.equilibrium,:B0))
+    plot(getfield(ini.equilibrium, :init_from))
+    plot(getfield(ini.equilibrium, :R0))
+    plot(getfield(ini.equilibrium, :B0))
 
     @test_throws Exception plot(GPs; layout=@layout([a b c])) # @layout is not supported
 
