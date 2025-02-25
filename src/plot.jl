@@ -151,6 +151,11 @@ function grouping_multi_parameters(multi_pars::Vector{<:AbstractParameter})
 
             push!(get!(values_map, key_name, Vector{Real}()),idx)
         end
+        if haskey(parameter_map, key_name)
+            if string(parameter_map[key_name].opt) != string(par.opt)
+                error("$key_name has different opt parameters")
+            end
+        end
         parameter_map[key_name] = par
     end
 
