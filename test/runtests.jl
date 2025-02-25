@@ -2,6 +2,7 @@ using SimulationParameters
 import InteractiveUtils
 using Test
 using Statistics
+using SimulationParameters.Plots
 
 abstract type ParametersInit{T} <: AbstractParameters{T} end # container for all parameters of a init
 abstract type ParametersAllInits{T} <: AbstractParameters{T} end # --> abstract type of ParametersInits, container for all parameters of all inits
@@ -357,4 +358,44 @@ end
 
     test_me(ini)
     InteractiveUtils.@code_warntype test_me(ini)
+end
+
+
+@testset "plot_recipes" begin
+    ini = ParametersInits()
+    Dist = SimulationParameters.Distributions
+    ini.equilibrium.R0 = 5.0 ↔ [1.0, 10.0]
+    ini.equilibrium.Z0 = 0.0 ↔ Dist.Normal(0.0, 2.0)
+
+    ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
+    ini.equilibrium.casename="case1"↔("case1", "case2", "case3")
+    # plot a single ini
+    plot(opt_parameters(ini))
+
+    # generate multiple inis
+    inis = [rand(ini) for _ in 1:200]
+
+    plot(ini)
+    plot(ini.equilibrium)
+    plot(ini.equilibrium,:R0)
+
+    plot(opt_parameters.(inis[1:10]))
+    plot(opt_parameters.(inis[1:50]))
+    plot(opt_parameters.(inis[1:101]))
+    plot(opt_parameters.(inis))
+
+    collected_params = SimulationParameters.grouping_multi_parameters(reduce(vcat,opt_parameters.(inis)))
+
+
+    # keywords test
+    plot(opt_parameters.(inis); flag_nominal_label=false)
+    plot(opt_parameters.(inis); nrows=1)
+    plot(opt_parameters.(inis); ncols=1)
+    plot(opt_parameters.(inis); nrows=2, ncols=2)
+    plot(opt_parameters.(inis); layout=Plots.GridLayout(2,2))
+    plot(opt_parameters.(inis); layout=(2,2))
+    plot(opt_parameters.(inis); layout=length(opt_parameters.(inis)))
+
+    @test_throws Exception plot(collected_params; layout=@layout([a b c])) # @layout is not supported
+
 end
