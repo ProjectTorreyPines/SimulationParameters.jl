@@ -128,6 +128,14 @@ end
     end
 end
 
+
+@recipe function plot_inis_acts(inis_and_acts::AbstractVector{<:AbstractParameters}...)
+    GPs = grouping_parameters(inis_and_acts...)
+    @series begin
+        GPs
+    end
+end
+
 @recipe function plot_GroupedParameters(CPs::Vector{GroupedParameter}; nrows=:auto, ncols=:auto, each_size=(500, 400))
 
     layout_val, size_val = compute_layout(length(CPs), nrows, ncols, each_size, plotattributes)

@@ -422,6 +422,10 @@ end
     plot(GPs; layout=(2, 3))
     plot(GPs; layout=length(GPs))
 
+    # Directly plot Vector of inis
+    plot(inis)
+    plot(inis,inis)
+
     # For more coverage
     plot(getfield(ini.equilibrium, :init_from))
     plot(getfield(ini.equilibrium, :R0))
