@@ -2,6 +2,7 @@ using SimulationParameters
 import InteractiveUtils
 using Test
 using Statistics
+using SimulationParameters.Plots
 
 abstract type ParametersInit{T} <: AbstractParameters{T} end # container for all parameters of a init
 abstract type ParametersAllInits{T} <: AbstractParameters{T} end # --> abstract type of ParametersInits, container for all parameters of all inits
@@ -33,6 +34,7 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T<:Real} <: ParametersIni
     _name::Symbol = :equilibrium
     R0::Entry{T} = Entry{T}("m", "Geometric center of the plasma"; check=x -> (@assert x > 0 "R0 must be >0"))
     Z0::Entry{T} = Entry{T}("m", "Geometric center of the plasma")
+    B0::Entry{T} = Entry{T}("T", "Vacuum toroidal field at R0 [T]; Positive sign means anti-clockwise when viewing from above. ")
     casename::Entry{String} = Entry{String}("-", "Mnemonic name of the case being run")
     init_from::Switch{Symbol} = Switch{Symbol}(
         [
@@ -310,7 +312,7 @@ end
     ini.equilibrium.Z0 = 0.0 ↔ SimulationParameters.Distributions.Normal(0.0, 2.0)
     ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
 
-    tmp_hdf_filename = tempname()*".h5"
+    tmp_hdf_filename = tempname() * ".h5"
     par2hdf(ini, tmp_hdf_filename)
 
     ini2 = hdf2par(tmp_hdf_filename, ParametersInits())
@@ -325,7 +327,7 @@ end
 
     # Over N random samples, at least one value should differ from the original,
     # indicating that the parameters are being randomized.
-    N=100
+    N = 100
     @test any([ori_R0 != rand(ini2).equilibrium.R0 for _ in 1:N])
     @test any([ori_Z0 != rand(ini2).equilibrium.Z0 for _ in 1:N])
     @test any([ori_init_from != rand(ini2).equilibrium.init_from for _ in 1:N])
@@ -357,4 +359,78 @@ end
 
     test_me(ini)
     InteractiveUtils.@code_warntype test_me(ini)
+end
+
+@testset "GroupedParameter" begin
+    ini = ParametersInits()
+    ini.equilibrium.R0 = 5.0 ↔ [1.0, 10.0]
+    ini.equilibrium.Z0 = 0.0 ↔ SimulationParameters.Distributions.Normal(0.0, 2.0)
+    ini.equilibrium.B0 = 2.0 ↔ (-2.0, +2.0)
+    ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
+    ini.equilibrium.casename = "case1" ↔ ("case1", "case2", "case3")
+
+    inis = [rand(ini) for _ in 1:200]
+
+    GPs = grouping_parameters(ini)
+    GPs = grouping_parameters(inis[1:3])
+    GPs = grouping_parameters(inis)
+    GPs = grouping_parameters([inis[1:3], inis[4:6]])
+    GPs = grouping_parameters(ini, inis, ini, inis)
+
+
+    inis[1].equilibrium.R0 = 2.0 ↔ (1.0, 2.0)
+    @test_throws Exception GPs = grouping_parameters(inis)
+end
+
+@testset "plot_recipes" begin
+    ini = ParametersInits()
+    Dist = SimulationParameters.Distributions
+    ini.equilibrium.R0 = 5.0 ↔ [1.0, 10.0]
+    ini.equilibrium.Z0 = 0.0 ↔ Dist.Normal(0.0, 2.0)
+    ini.equilibrium.B0 = 2.0 ↔ (-2.0, +2.0)
+
+    ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
+    ini.equilibrium.casename = "case1" ↔ ("case1", "case2", "case3")
+    # plot a single ini
+    plot(opt_parameters(ini))
+
+    # generate multiple inis
+    inis = [rand(ini) for _ in 1:200]
+
+    plot(ini)
+    plot(ini.equilibrium)
+    plot(ini.equilibrium, :R0)
+
+    plot(grouping_parameters(inis[1]))
+    plot(grouping_parameters(inis[1:10]))
+    plot(grouping_parameters(inis[1:50]))
+    plot(grouping_parameters(inis[1:101]))
+    plot(grouping_parameters(inis))
+
+    # GPs = Vector{GroupedParameter}
+    GPs = grouping_parameters(inis)
+    plot(GPs)
+    plot(GPs[1])
+    plot(GPs[1:3])
+
+    # keywords test
+    plot(GPs; flag_nominal_label=false)
+    plot(GPs; nrows=1)
+    plot(GPs; ncols=1)
+    plot(GPs; nrows=2, ncols=3)
+    plot(GPs; layout=Plots.GridLayout(2, 3))
+    plot(GPs; layout=(2, 3))
+    plot(GPs; layout=length(GPs))
+
+    # Directly plot Vector of inis
+    plot(inis)
+    plot(inis,inis)
+
+    # For more coverage
+    plot(getfield(ini.equilibrium, :init_from))
+    plot(getfield(ini.equilibrium, :R0))
+    plot(getfield(ini.equilibrium, :B0))
+
+    @test_throws Exception plot(GPs; layout=@layout([a b c])) # @layout is not supported
+
 end

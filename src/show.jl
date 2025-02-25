@@ -121,6 +121,33 @@ function Base.show(io::IO, p::AbstractParameter)
     end
 end
 
+function Base.show(io::IO, ::MIME"text/plain", GP::GroupedParameter)
+    p = GP.parameter
+    color = parameter_color(p)
+    printstyled(io, spath(p); bold=true, color=color)
+    printstyled(io, "\n  ↳ N_samples: "; bold=true)
+    printstyled(io, "$(length(GP.values))"; bold=true, color=:green)
+    printstyled(io, "\n  ↳ type: "; bold=true)
+    printstyled(io, "$(typeof(p).parameters[1])")
+
+    for item in [:description, :opt]
+        if startswith(string(item), "_")
+            continue
+        end
+        printstyled(io, "\n  ↳ $item: "; bold=true)
+        printstyled(io, "$(getfield(p, item))")
+    end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", GPs::AbstractArray{GroupedParameter})
+    printstyled(io, "GroupedParameters"; bold=true)
+    for (k, GP) in pairs(GPs)
+        color = parameter_color(GP.parameter)
+        printstyled(io, "\n[$k] "; bold=true, color=color)
+        show(io, MIME"text/plain"(), GP)
+    end
+end
+
 #########
 # utils #
 #########
