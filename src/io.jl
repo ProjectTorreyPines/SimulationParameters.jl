@@ -1,6 +1,6 @@
-# ==== # 
+# ==== #
 # YAML #
-# ==== # 
+# ==== #
 
 function par2ystr(par::AbstractParameters; show_info::Bool=true, skip_defaults::Bool=false)
     tmp = par2ystr(par, String[]; show_info, skip_defaults)
@@ -188,9 +188,9 @@ function yaml2par(filename::AbstractString, par::AbstractParameters)
     end
 end
 
-# ==== # 
+# ==== #
 # JSON #
-# ==== # 
+# ==== #
 
 """
     par2json(@nospecialize(par::AbstractParameters), filename::String; kw...)
@@ -313,7 +313,7 @@ function dict2par!(dct::AbstractDict, par::AbstractParameters)
             catch e
                 println(stderr, "Error setting parameter $(spath(parameter))::$(eltype(parameter)) with: `$(value)`::$(typeof(value))")
                 rethrow(e)
-            end                
+            end
         end
     end
     return par
@@ -373,11 +373,6 @@ function par2hdf!(@nospecialize(par::AbstractParametersVector), gparent::Union{H
     end
 end
 
-function hdf2par(@nospecialize(par::AbstractParameters), filename::String; kw...)
-    HDF5.h5open(filename, "w"; kw...) do fid
-        return par2hdf!(par, fid)
-    end
-end
 
 """
     hdf2par(filename::AbstractString, par::AbstractParameters; kw...)
@@ -481,7 +476,11 @@ function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
             etp = eltype(tp)
         end
         if !isempty(value)
-            value = etp.(value)
+            if tp <: AbstractArray{Symbol} && typeof(value) <: AbstractArray{String}
+                value = Symbol.([(startswith(x, ":") ? x[2:end] : x) for x in value ])
+            else
+                value = etp.(value)
+            end
         else
             value = Vector{etp}()
         end

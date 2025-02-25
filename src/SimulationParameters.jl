@@ -37,6 +37,7 @@ export par2jstr, jstr2par
 export par2ystr, ystr2par
 export par2json, json2par
 export par2yaml, yaml2par
+export par2hdf, hdf2par
 export show_modified
 export OptParameter, ↔, opt_parameters, parameters_from_opt!, rand, rand!, float_bounds, nominal_values, opt_labels
 export InexistentParametersFieldException, NotsetParameterException, BadParameterException
