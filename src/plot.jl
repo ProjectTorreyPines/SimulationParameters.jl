@@ -143,13 +143,13 @@ function grouping_multi_parameters(multi_pars::Vector{<:AbstractParameter})
     # Iterate over each vector of parameters
     for par in multi_pars
         key_name = spath(par)
-        if typeof(par.value) <: Real
-            push!(get!(values_map, key_name, Vector{Real}()), par.value)
-        elseif typeof(par.value) <: Union{Symbol,AbstractString}
+        # if typeof(par.value) <: Real
+        if typeof(par.opt) <: OptParameterChoice
             idx = findfirst(par.opt.choices.==par.value)
             isempty(idx) ? error("$(spath(par)) value $(par.value) not found in $(par.opt.choices)") : nothing
-
-            push!(get!(values_map, key_name, Vector{Real}()),idx)
+            push!(get!(values_map, key_name, Vector{typeof(idx)}()),idx)
+        else
+            push!(get!(values_map, key_name, Vector{eltype(par.value)}()), par.value)
         end
         if haskey(parameter_map, key_name)
             if string(parameter_map[key_name].opt) != string(par.opt)
@@ -208,7 +208,13 @@ end
 
 @recipe function plot_Entry(ety::Entry, multi_values::Vector{<:Real}=[])
 
-    title --> spath(ety)
+    if isempty(ety.units) || ety.units == "-"
+        unit_name = ""
+    else
+        unit_name = "[$(ety.units)]"
+    end
+    title --> spath(ety)*" $unit_name"
+    titlefontsize --> 16
     yguide --> "Probability Density"
 
     if ety.opt isa Union{OptParameterRange,OptParameterDistribution}
@@ -289,7 +295,13 @@ end
 end
 
 @recipe function plot_Switch(sw::Switch, multi_values::Vector{<:Real}=[])
-    title --> spath(sw)
+    if isempty(sw.units) || sw.units == "-"
+        unit_name = ""
+    else
+        unit_name = "[$(sw.units)]"
+    end
+    title --> spath(sw)*" $unit_name"
+    titlefontsize --> 16
     yguide := "Counts"
     if isempty(multi_values)
         N_choices = length(sw.opt.choices)

@@ -34,6 +34,7 @@ Base.@kwdef mutable struct FUSEparameters__equilibrium{T<:Real} <: ParametersIni
     _name::Symbol = :equilibrium
     R0::Entry{T} = Entry{T}("m", "Geometric center of the plasma"; check=x -> (@assert x > 0 "R0 must be >0"))
     Z0::Entry{T} = Entry{T}("m", "Geometric center of the plasma")
+    B0::Entry{T} = Entry{T}("T", "Vacuum toroidal field at R0 [T]; Positive sign means anti-clockwise when viewing from above. ")
     casename::Entry{String} = Entry{String}("-", "Mnemonic name of the case being run")
     init_from::Switch{Symbol} = Switch{Symbol}(
         [
@@ -366,6 +367,7 @@ end
     Dist = SimulationParameters.Distributions
     ini.equilibrium.R0 = 5.0 ↔ [1.0, 10.0]
     ini.equilibrium.Z0 = 0.0 ↔ Dist.Normal(0.0, 2.0)
+    ini.equilibrium.B0 = 2.0 ↔ (-2.0, +2.0)
 
     ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
     ini.equilibrium.casename="case1"↔("case1", "case2", "case3")
@@ -379,6 +381,7 @@ end
     plot(ini.equilibrium)
     plot(ini.equilibrium,:R0)
 
+    plot(opt_parameters(inis[1]))
     plot(opt_parameters.(inis[1:10]))
     plot(opt_parameters.(inis[1:50]))
     plot(opt_parameters.(inis[1:101]))
@@ -391,10 +394,15 @@ end
     plot(opt_parameters.(inis); flag_nominal_label=false)
     plot(opt_parameters.(inis); nrows=1)
     plot(opt_parameters.(inis); ncols=1)
-    plot(opt_parameters.(inis); nrows=2, ncols=2)
-    plot(opt_parameters.(inis); layout=Plots.GridLayout(2,2))
-    plot(opt_parameters.(inis); layout=(2,2))
-    plot(opt_parameters.(inis); layout=length(opt_parameters.(inis)))
+    plot(opt_parameters.(inis); nrows=2, ncols=3)
+    plot(opt_parameters.(inis); layout=Plots.GridLayout(2,3))
+    plot(opt_parameters.(inis); layout=(2,3))
+    plot(opt_parameters.(inis); layout=length(collected_params))
+
+    # For more coverage
+    plot(getfield(ini.equilibrium,:init_from))
+    plot(getfield(ini.equilibrium,:R0))
+    plot(getfield(ini.equilibrium,:B0))
 
     @test_throws Exception plot(collected_params; layout=@layout([a b c])) # @layout is not supported
 
