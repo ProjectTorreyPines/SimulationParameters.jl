@@ -207,6 +207,8 @@ end
     yguide --> "Probability Density"
 
     if ety.opt isa Union{OptParameterRange,OptParameterDistribution}
+        xtickfontsize --> 10
+        ytickfontsize --> 10
         @series begin
             ety.opt
         end
@@ -229,27 +231,44 @@ end
             if length(multi_values)==1
                 label_name = "sampled value (≈"*@sprintf("%.3g",ety.value)*")"
             else
-                label_name = "samples"
+                label_name = "$(length(x_vals)) samples"
             end
-        else
-            label_name = ""
         end
 
-
-        @series begin
-            seriestype --> :scatter
-            marker --> :circle
-            # markersize --> 10
-            # markeralpha --> 0.7
-            markersize --> compute_marker_size(length(multi_values))
-            markeralpha --> compute_marker_alpha(length(multi_values))
-            markercolor --> :red
-            label --> label_name
-            x_vals, y_vals
+        if length(x_vals) <= 100
+            @series begin
+                seriestype --> :scatter
+                marker --> :circle
+                markersize --> compute_marker_size(length(multi_values))
+                markeralpha --> compute_marker_alpha(length(multi_values))
+                markercolor --> :blue
+                label --> label_name
+                x_vals, y_vals
+            end
         end
+
+        if length(x_vals) >= 20
+
+            nbins = min(30, ceil(Int,length(x_vals)/5))
+            my_bin_edges = range(minimum(x_vals), stop=maximum(x_vals), length=nbins+1)
+            @series begin
+                seriestype --> :histogram
+                normalize --> :pdf
+                bins --> my_bin_edges
+                color --> :green
+                alpha --> 0.4
+                label --> label_name
+                label --> ""
+                z_order --> 1
+                ylims := (0, :auto)
+                x_vals
+            end
+        end
+
     elseif ety.opt isa OptParameterChoice
         yguide := "Counts"
-        xtickfontsize := 12
+        xtickfontsize --> 14
+        ytickfontsize --> 10
         if isempty(multi_values)
             N_choices = length(ety.opt.choices)
             counts_vec = zeros(Int, N_choices)
@@ -275,7 +294,8 @@ end
         counts_vec = [count(==(idx), multi_values) for idx in 1:length(sw.opt.choices)]
     end
 
-    xtickfontsize --> 12
+    xtickfontsize --> 14
+    ytickfontsize --> 10
     @series begin
         sw.opt, counts_vec
     end
@@ -291,10 +311,14 @@ end
 
     xticks --> (1:N_choices, opt.choices)
 
+    xtickfontsize --> 14
+    ytickfontsize --> 10
+
     if get(plotattributes, :flag_pdf, true)
         @series begin
             seriestype --> :hline
-            linewidth --> 2.5
+            linewidth --> 3.5
+            color --> :red
             label --> "PDF"
             [1/N_choices]*Nsamples
         end
@@ -360,9 +384,13 @@ end
     ylims --> (0, :auto)
     yguide --> "Probability Density"
 
+    xtickfontsize --> 10
+    ytickfontsize --> 10
+
     if get(plotattributes, :flag_pdf, true)
         @series begin
-            linewidth --> 2.5
+            linewidth --> 3.5
+            color --> :red
             label --> "PDF"
             ylims --> (0, :auto)
             xx, yy
@@ -388,11 +416,15 @@ end
     xx = isfinite(opt.dist.upper) ? vcat(xx, opt.dist.upper) : xx
     yy = isfinite(opt.dist.upper) ? vcat(yy, 0.0) : yy
 
+    xtickfontsize --> 10
+    ytickfontsize --> 10
+
     ylims --> (0, :auto)
     yguide --> "Probability Density"
     if get(plotattributes, :flag_pdf, true)
         @series begin
-            linewidth --> 2.5
+            linewidth --> 3.5
+            color --> :red
             label --> "PDF"
             xx, yy
         end
@@ -439,12 +471,12 @@ function compute_layout(Nlength, nrows, ncols, each_size, plotattributes)
     return layout_val, size_val
 end
 
-function compute_marker_size(nsample::Integer; max_size::Float64=15.0, min_size::Float64=5.0, max_Nsample::Integer=30)
+function compute_marker_size(nsample::Integer; max_size::Float64=15.0, min_size::Float64=7.0, max_Nsample::Integer=60)
     s = max_size - (max_size-min_size)/max_Nsample* nsample
     return clamp(s, min_size, max_size)
 end
 
-function compute_marker_alpha(nsample::Integer; max_α::Float64=0.8, min_α::Float64=0.2, max_Nsample::Integer=30)
+function compute_marker_alpha(nsample::Integer; max_α::Float64=0.6, min_α::Float64=0.15, max_Nsample::Integer=60)
     a = max_α - (max_α-min_α)/max_Nsample * nsample
     return clamp(a, min_α, max_α)
 end
