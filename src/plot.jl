@@ -145,7 +145,7 @@ function grouping_multi_parameters(multi_pars::Vector{<:AbstractParameter})
         key_name = spath(par)
         if typeof(par.value) <: Real
             push!(get!(values_map, key_name, Vector{Real}()), par.value)
-        elseif typeof(par.value) <: Symbol
+        elseif typeof(par.value) <: Union{Symbol,AbstractString}
             idx = findfirst(par.opt.choices.==par.value)
             isempty(idx) ? error("$(spath(par)) value $(par.value) not found in $(par.opt.choices)") : nothing
 
@@ -372,7 +372,7 @@ end
             label --> ""
         end
         linestyle --> :dash
-        linewidth --> 1.5
+        linewidth --> 2.0
         color --> :gray
         [value]
     end
@@ -410,16 +410,19 @@ end
 
 @recipe function plot_OptParameterDistribution(opt::OptParameterDistribution)
 
-    lbound = isfinite(opt.dist.lower) ? opt.dist.lower : Distributions.quantile(opt.dist, 0.001)
-    rbound = isfinite(opt.dist.upper) ? opt.dist.upper : Distributions.quantile(opt.dist, 0.999)
+    lower = Distributions.quantile(opt.dist, 0)
+    upper = Distributions.quantile(opt.dist, 1)
+
+    lbound = isfinite(lower) ? lower : Distributions.quantile(opt.dist, 0.001)
+    rbound = isfinite(upper) ? upper : Distributions.quantile(opt.dist, 0.999)
 
     xx = collect(range(lbound, rbound, length=200))
-    yy = Distributions.pdf(opt.dist, xx)
+    yy = Distributions.pdf.(opt.dist, xx)
 
-    xx = isfinite(opt.dist.lower) ? vcat(opt.dist.lower, xx) : xx
-    yy = isfinite(opt.dist.lower) ? vcat(0.0, yy) : yy
-    xx = isfinite(opt.dist.upper) ? vcat(xx, opt.dist.upper) : xx
-    yy = isfinite(opt.dist.upper) ? vcat(yy, 0.0) : yy
+    xx = isfinite(lower) ? vcat(lower, xx) : xx
+    yy = isfinite(lower) ? vcat(0.0, yy) : yy
+    xx = isfinite(upper) ? vcat(xx, upper) : xx
+    yy = isfinite(upper) ? vcat(yy, 0.0) : yy
 
     xtickfontsize --> 10
     ytickfontsize --> 10
@@ -468,6 +471,10 @@ function compute_layout(Nlength, nrows, ncols, each_size, plotattributes)
         tmp_grid = Plots.layout_args(plotattributes, my_layout)[1].grid
         nrows_val = size(tmp_grid)[1]
         ncols_val = size(tmp_grid)[2]
+    elseif my_layout isa Tuple{Int,Int}
+        layout_val = my_layout
+        nrows_val = my_layout[1]
+        ncols_val = my_layout[2]
     else
         error("Unsupported layout type")
     end
