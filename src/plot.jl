@@ -155,7 +155,8 @@ function grouping_multi_parameters(multi_pars::Vector{<:AbstractParameter})
     end
 
     # Build the collected parameters vector from the dictionaries
-    for key in keys(values_map)
+    sorted_keys = sort(collect(keys(values_map)))
+    for key in sorted_keys
         push!(collected, CollectedParameter(parameter_map[key], values_map[key]))
     end
 
