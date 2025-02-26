@@ -388,9 +388,9 @@ end
 
 function encode_opt2string(opt::Union{OptParameter,Missing})::String
     if typeof(opt) <: OptParameterDistribution
-        clean_dist_str = remove_keywords_before_semicolon(string(opt.dist))
-        clean_dist_str = replace(clean_dist_str, "Truncated" => "Distributions.truncated")
-        return "$(typeof(opt))($(opt.nominal), $clean_dist_str)"
+        s = remove_keywords_before_semicolon(string(opt.dist))
+        s = replace(s, r"(?:Distributions\.)?Truncated" => "Distributions.truncated")
+        return "$(typeof(opt))($(opt.nominal), $s)"
     else
         return string(opt)
     end
