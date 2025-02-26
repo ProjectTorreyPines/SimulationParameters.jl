@@ -2,7 +2,7 @@ using SimulationParameters
 import InteractiveUtils
 using Test
 using Statistics
-using SimulationParameters.Plots
+using Plots
 
 abstract type ParametersInit{T} <: AbstractParameters{T} end # container for all parameters of a init
 abstract type ParametersAllInits{T} <: AbstractParameters{T} end # --> abstract type of ParametersInits, container for all parameters of all inits
@@ -411,26 +411,34 @@ end
     GPs = grouping_parameters(inis)
     plot(GPs)
     plot(GPs[1])
-    plot(GPs[1:3])
+    plot(GPs)
+    plot(GPs[1:3]; layout=@layout[a{0.3h} b; b c])
+    plot(GPs[1:3]; nrows=2)
+    plot(GPs[1:3]; ncols=2)
+    plot(GPs[1:3]; ncols=2, nrows=2)
+    plot(GPs[1:3]; layout=(3,:))
+    plot(GPs[1:3]; layout=(:,2))
+    plot(GPs[1:3]; layout=(:,:))
+    plot(GPs[1:3]; layout=10)
 
     # keywords test
     plot(GPs; flag_nominal_label=false)
     plot(GPs; nrows=1)
     plot(GPs; ncols=1)
-    plot(GPs; nrows=2, ncols=3)
+    plot(GPs; nrows=4, ncols=4)
     plot(GPs; layout=Plots.GridLayout(2, 3))
     plot(GPs; layout=(2, 3))
     plot(GPs; layout=length(GPs))
 
     # Directly plot Vector of inis
     plot(inis)
-    plot(inis,inis)
+    plot([inis])
+    plot(inis, inis)
+    plot(inis, ini)
 
     # For more coverage
     plot(getfield(ini.equilibrium, :init_from))
     plot(getfield(ini.equilibrium, :R0))
     plot(getfield(ini.equilibrium, :B0))
-
-    @test_throws Exception plot(GPs; layout=@layout([a b c])) # @layout is not supported
 
 end

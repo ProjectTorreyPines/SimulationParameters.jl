@@ -1,6 +1,6 @@
 using RecipesBase
 using Printf
-import Plots
+import Measures
 """
     plot_pars(pars::AbstractParameters)
 
@@ -128,7 +128,6 @@ end
     end
 end
 
-
 @recipe function plot_inis_acts(inis_and_acts::AbstractVector{<:AbstractParameters}...)
     GPs = grouping_parameters(inis_and_acts...)
     @series begin
@@ -136,41 +135,62 @@ end
     end
 end
 
-@recipe function plot_GroupedParameters(CPs::Vector{GroupedParameter}; nrows=:auto, ncols=:auto, each_size=(500, 400))
-
-    layout_val, size_val = compute_layout(length(CPs), nrows, ncols, each_size, plotattributes)
-    layout := layout_val
-    size := size_val
-    left_margin --> [10 * Plots.Measures.mm 10 * Plots.Measures.mm]
-    bottom_margin --> 10 * Plots.Measures.mm
+@recipe function plot_GroupedParameters(GPs::Vector{GroupedParameter}; nrows=:auto, ncols=:auto, each_size=(500, 400))
+    # Set overall plot attributes.
+    left_margin --> [10 * Measures.mm 10 * Measures.mm]
+    bottom_margin --> 10 * Measures.mm
     legend_position --> :best
 
-    # legend_foreground_color := :red
-    for (k, CP) in pairs(CPs)
-        @series begin
-            subplot := k
-            CP
+    layout_val, size_val, total_cells = compute_layout(length(GPs), nrows, ncols, each_size, plotattributes)
+
+    layout := layout_val
+    size --> size_val
+
+    # Now, add series: if a cell index exceeds length(GPs), create a blank series.
+    for k in 1:total_cells
+        if k <= length(GPs)
+            @series begin
+                subplot := k
+                GPs[k]
+            end
+        else
+            # Create a blank plot for empty grid cells.
+            @series begin
+                subplot := k
+                label --> ""
+                framestyle --> :none
+                xticks --> ([], [])
+                yticks --> ([], [])
+                []  # Empty data produces no content.
+            end
         end
     end
 end
 
-@recipe function plot_GroupedParameter(CP::GroupedParameter)
+@recipe function plot_GroupedParameter(GP::GroupedParameter)
     @series begin
-        CP.parameter, CP.values
+        GP.parameter, GP.values
     end
 end
 
-@recipe function plot_parameters_multi(pars_vec_vec::Vector{<:Vector{<:AbstractParameter}})
-    collected_parameters = grouping_parameters(reduce(vcat, pars_vec_vec))
+@recipe function plot_args_of_parameters(args::Union{AbstractVector{<:AbstractParameters},AbstractParameters}...)
+    GPs = grouping_parameters(args...)
     @series begin
-        collected_parameters
+        GPs
+    end
+end
+
+@recipe function plot_parameters_multi(pars_vec_vec::Vector{<:Vector{<:AbstractParameters}})
+    GPs = grouping_parameters(pars_vec_vec)
+    @series begin
+        GPs
     end
 end
 
 @recipe function plot_parameters(pars_vec::Vector{<:AbstractParameter})
-    collected_parameters = grouping_parameters(pars_vec)
+    GPs = grouping_parameters(pars_vec)
     @series begin
-        collected_parameters
+        GPs
     end
 end
 
@@ -338,7 +358,7 @@ end
     ylims --> (0, 1.3 * maximum(counts_vec))
     xticks --> (1:N_choices, opt.choices)
 
-    annotations --> [(i, 0.5 * v, Plots.text(string(v), :center, 10, "black")) for (i, v) in enumerate(counts_vec) if v > 0]
+    annotations --> [(i, 0.5 * v, string(v)) for (i, v) in enumerate(counts_vec) if v > 0]
     @series begin
         seriestype --> :bar
         label --> ""
@@ -434,43 +454,68 @@ end
 end
 
 function compute_layout(Nlength, nrows, ncols, each_size, plotattributes)
-    my_layout = get(plotattributes, :layout) do
-        # Fallback: Compute my_layout using nrows or ncols if provided
-        layout_spec = Nlength
-        if nrows !== :auto && ncols == :auto
-            layout_spec = (layout_spec, (nrows, :))
-        elseif ncols !== :auto && nrows == :auto
-            layout_spec = (layout_spec, (:, ncols))
-        elseif nrows !== :auto || ncols !== :auto
-            layout_spec = (layout_spec, (nrows, ncols))
+    if haskey(plotattributes, :layout)
+        l = plotattributes[:layout]
+        if l isa Int
+            if l ≠ Nlength
+                l = Nlength
+                @warn "layout is automatically coverted to $(Nlength)"
+            end
+            nc = ceil(Int, sqrt(Nlength))
+            nr = ceil(Int, Nlength / nc)
+            total_cells = nc * nr
+            layout_val = (nr, nc)
+        elseif l isa Tuple{Int,Int}
+            # Layout is given as (nrows, ncols)
+            nr, nc = l
+            layout_val = (nr, nc)
+            total_cells = nr * nc
+        elseif l isa Tuple && any(x -> x === :, l)
+            # Fallback: assume l[1] and l[2] (which may be Colon)
+            if l == (:,:)
+                nc = ceil(Int, sqrt(Nlength))
+                nr = ceil(Int, Nlength / nc)
+            else
+                nr = (l[1] isa Colon) ? ceil(Int, Nlength / l[2]) : l[1]
+                nc = (l[2] isa Colon) ? ceil(Int, Nlength / l[1]) : l[2]
+            end
+            layout_val = (nr, nc)
+            total_cells = nr * nc
+        elseif l isa Matrix
+            nr, nc = size(l)
+            layout_val = l
+            total_cells = nr * nc
+        else
+            # Unknown external layout; leave as is and default grid to one row.
+            layout_val = l
+            nc = ceil(Int, sqrt(Nlength))
+            nr = ceil(Int, Nlength / nc)
+            total_cells = nr * nc
         end
-        return Plots.layout_args(layout_spec...)
-    end
-
-    # Define layout and compute nrows & ncols
-    if my_layout isa Tuple{Plots.GridLayout,Int}
-        layout_val = (nrows == :auto && ncols == :auto) ? my_layout[2] : my_layout[1]
-        nrows_val = size(my_layout[1].grid)[1]
-        ncols_val = size(my_layout[1].grid)[2]
-    elseif my_layout isa Plots.GridLayout
-        layout_val = my_layout
-        nrows_val = size(my_layout.grid)[1]
-        ncols_val = size(my_layout.grid)[2]
-    elseif my_layout isa Int
-        layout_val = my_layout
-        tmp_grid = Plots.layout_args(plotattributes, my_layout)[1].grid
-        nrows_val = size(tmp_grid)[1]
-        ncols_val = size(tmp_grid)[2]
-    elseif my_layout isa Tuple{Int,Int}
-        layout_val = my_layout
-        nrows_val = my_layout[1]
-        ncols_val = my_layout[2]
     else
-        error("Unsupported layout type")
+        # However, if nrows or ncols are provided, use them.
+        if nrows !== :auto || ncols !== :auto
+            if nrows === :auto && ncols !== :auto
+                nc = ncols
+                nr = ceil(Int, Nlength / ncols)
+            elseif ncols === :auto && nrows !== :auto
+                nr = nrows
+                nc = ceil(Int, Nlength / nrows)
+            else
+                nr, nc = nrows, ncols
+            end
+            layout_val = (nr, nc)
+        else
+            nc = ceil(Int, sqrt(Nlength))
+            nr = ceil(Int, Nlength / nc)
+            layout_val = (nr, nc)
+        end
+        total_cells = nc * nr
     end
 
-    size_val = (ncols_val * each_size[1], nrows_val * each_size[2])
-    return layout_val, size_val
+    size_val = (nc * each_size[1], nr * each_size[2])
+
+    return layout_val, size_val, total_cells
 end
 
 function compute_marker_size(nsample::Integer; max_size::Float64=15.0, min_size::Float64=7.0, max_Nsample::Integer=60)
