@@ -306,16 +306,37 @@ end
 end
 
 @testset "hdf_save_load" begin
+    Dist = SimulationParameters.Distributions
+
     ini = ParametersInits()
 
+    ini.time.simulation_start = 0.0 ↔ (0.0, 1.0, 10.0)
+
     ini.equilibrium.R0 = 5.0 ↔ [1.0, 10.0]
-    ini.equilibrium.Z0 = 0.0 ↔ SimulationParameters.Distributions.Normal(0.0, 2.0)
+    ini.equilibrium.Z0 = 0.0 ↔ Dist.truncated(Dist.Normal(0.0, 2.0), lower=0.0)
+
+
+    dist1 = Dist.truncated(Dist.Normal(2,1.0), lower=1.0, upper=Inf)
+    dist2 = Dist.truncated(Dist.Normal(7.0,1.0), lower=0.5, upper=Inf)
+    mixed_two_dists =  Dist.MixtureModel([dist1, dist2], [0.3, 0.7])
+    ini.equilibrium.B0 = 5.0 ↔ mixed_two_dists
+
     ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
+    ini.equilibrium.dict_option = 2 ↔ (2,3,4)
+
 
     tmp_hdf_filename = tempname() * ".h5"
     par2hdf(ini, tmp_hdf_filename)
 
-    ini2 = hdf2par(tmp_hdf_filename, ParametersInits())
+    ini2 = hdf2par(tmp_hdf_filename, ParametersInits());
+
+    @test isequal(getfield(ini.time,:simulation_start), getfield(ini2.time,:simulation_start); verbose=true)
+    @test isequal(getfield(ini.equilibrium,:R0), getfield(ini2.equilibrium,:R0); verbose=true)
+    @test isequal(getfield(ini.equilibrium,:Z0), getfield(ini2.equilibrium,:Z0); verbose=true)
+    @test isequal(getfield(ini.equilibrium,:B0), getfield(ini2.equilibrium,:B0); verbose=true)
+    @test isequal(getfield(ini.equilibrium,:init_from), getfield(ini2.equilibrium,:init_from); verbose=true)
+    @test isequal(getfield(ini.equilibrium,:dict_option), getfield(ini2.equilibrium,:dict_option); verbose=true)
+    @test getfield(ini.equilibrium,:Z0) == getfield(ini2.equilibrium,:Z0)
 
     @test diff(ini, ini2) === false
 
@@ -323,6 +344,7 @@ end
     # Save original values to compare against random samples.
     ori_R0 = deepcopy(ini2.equilibrium.R0)
     ori_Z0 = deepcopy(ini2.equilibrium.Z0)
+    ori_B0 = deepcopy(ini2.equilibrium.B0)
     ori_init_from = deepcopy(ini2.equilibrium.init_from)
 
     # Over N random samples, at least one value should differ from the original,
@@ -330,6 +352,7 @@ end
     N = 100
     @test any([ori_R0 != rand(ini2).equilibrium.R0 for _ in 1:N])
     @test any([ori_Z0 != rand(ini2).equilibrium.Z0 for _ in 1:N])
+    @test any([ori_B0 != rand(ini2).equilibrium.B0 for _ in 1:N])
     @test any([ori_init_from != rand(ini2).equilibrium.init_from for _ in 1:N])
 
     isfile(tmp_hdf_filename) && rm(tmp_hdf_filename)

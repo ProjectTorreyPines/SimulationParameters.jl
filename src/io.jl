@@ -365,18 +365,20 @@ function par2hdf!(@nospecialize(par::AbstractParameters), gparent::Union{HDF5.Fi
             elseif typeof(value) <: AbstractString
                 HDF5.write(gparent, string(field), value)
                 attr = HDF5.attrs(gparent[string(field)])
-                attr["concrete_type"] = string(eltype(parameter))
-                attr["units"] = parameter.units
-                attr["description"] = parameter.description
-                attr["opt"] = clean_opt_string(parameter.opt)
             else
                 dset = HDF5.create_dataset(gparent, string(field), eltype(value), size(value))
                 HDF5.write(dset, value)
                 attr = HDF5.attrs(dset)
-                attr["concrete_type"] = string(eltype(parameter))
-                attr["units"] = parameter.units
-                attr["description"] = parameter.description
-                attr["opt"] = clean_opt_string(parameter.opt)
+            end
+            attr["concrete_type"] = string(eltype(parameter))
+            attr["units"] = parameter.units
+            attr["description"] = parameter.description
+            if !ismissing(parameter.opt)
+                opt_string = encode_opt2string(parameter.opt)
+                attr["opt_string"] = opt_string
+                if !is_opt_string_valid(opt_string, parameter.opt)
+                    attr["opt_base64"] = encode_opt2base(parameter.opt)
+                end
             end
         else
             error("par2hdf! $(field) should not be here, with $(typeof(parameter))")
@@ -384,13 +386,18 @@ function par2hdf!(@nospecialize(par::AbstractParameters), gparent::Union{HDF5.Fi
     end
 end
 
-function clean_opt_string(opt::Union{OptParameter,Missing})::String
+function encode_opt2string(opt::Union{OptParameter,Missing})::String
     if typeof(opt) <: OptParameterDistribution
         clean_dist_str = remove_keywords_before_semicolon(string(opt.dist))
+        clean_dist_str = replace(clean_dist_str, "Truncated" => "Distributions.truncated")
         return "$(typeof(opt))($(opt.nominal), $clean_dist_str)"
     else
         return string(opt)
     end
+end
+
+function decode_string2opt(opt_string::String)
+    return eval(Meta.parse(opt_string))
 end
 
 function remove_keywords_before_semicolon(s::String)::String
@@ -406,6 +413,30 @@ function remove_keywords_before_semicolon(s::String)::String
 
     return isempty(post) ? pre_fixed : pre_fixed * ";" * post
 end
+
+function is_opt_string_valid(opt_string::String, ori_par::OptParameter)::Bool
+    try
+        par_restored = eval(Meta.parse(opt_string))
+        if par_restored == ori_par
+            return true
+        else
+            return false
+        end
+    catch
+        return false
+    end
+end
+
+function encode_opt2base(opt::OptParameter)
+    buf = IOBuffer()
+    Serialization.serialize(buf, opt)
+    return Base64.base64encode(take!(buf))
+end
+
+function decode_base2opt(opt_base64::String)
+    return Serialization.deserialize(IOBuffer(Base64.base64decode(opt_base64)))
+end
+
 
 function par2hdf!(@nospecialize(par::AbstractParametersVector), gparent::Union{HDF5.File,HDF5.Group})
     # Add metadata to group's attributes
@@ -438,11 +469,15 @@ function hdf2par(gparent::Union{HDF5.File,HDF5.Group}, @nospecialize(par::Abstra
 
             entryObj = getfield(par, Symbol(field))
             attr = HDF5.attrs(gparent[field])
-            if "opt" in keys(attr)
+            if "opt_string" in keys(attr)
                 try
-                    setfield!(entryObj, :opt, eval(Meta.parse(attr["opt"])))
+                    setfield!(entryObj, :opt, decode_string2opt(attr["opt_string"]))
                 catch
-                    @warn "$(attr["opt"]) is not a valid OptParameter"
+                    try
+                        entryObj.opt= decode_base2opt(attr["opt_base64"])
+                    catch
+                        @warn "$(attr["opt_string"]) is not a valid OptParameter"
+                    end
                 end
             end
         else

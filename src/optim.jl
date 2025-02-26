@@ -451,6 +451,10 @@ function Base.rand(parameter::AbstractParameter)
     return opt2value(parameter.opt, typeof(parameter.value))
 end
 
+function Base.rand(opt::OptParameter)
+    return opt2value(opt, typeof(opt.nominal))
+end
+
 """
     rand!(parameters::AbstractParameters)
 
