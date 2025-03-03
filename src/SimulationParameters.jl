@@ -11,6 +11,7 @@ import Distributions
 import Dates
 import Serialization
 import Base64
+import HelpPlots
 
 include("parameter.jl")
 

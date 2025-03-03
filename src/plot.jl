@@ -136,6 +136,12 @@ end
 end
 
 @recipe function plot_GroupedParameters(GPs::Vector{GroupedParameter}; nrows=:auto, ncols=:auto, each_size=(500, 400))
+
+    name = "Grouped Parameters"
+    HelpPlots.assert_type_and_record_argument(name, Tuple{Integer,Integer}, "Size of each subplot. (Default=(500, 400))"; each_size)
+    HelpPlots.assert_type_and_record_argument(name, Union{Integer,Symbol}, "Number of rows for subplots' layout (Default = :auto)"; nrows)
+    HelpPlots.assert_type_and_record_argument(name, Union{Integer,Symbol}, "Number of columns for subplots' layout (Default = :auto)"; ncols)
+
     # Set overall plot attributes.
     left_margin --> [10 * Measures.mm 10 * Measures.mm]
     bottom_margin --> 10 * Measures.mm

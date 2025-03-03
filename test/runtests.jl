@@ -3,6 +3,7 @@ import InteractiveUtils
 using Test
 using Statistics
 using Plots
+using HelpPlots
 
 abstract type ParametersInit{T} <: AbstractParameters{T} end # container for all parameters of a init
 abstract type ParametersAllInits{T} <: AbstractParameters{T} end # --> abstract type of ParametersInits, container for all parameters of all inits
@@ -463,5 +464,10 @@ end
     plot(getfield(ini.equilibrium, :init_from))
     plot(getfield(ini.equilibrium, :R0))
     plot(getfield(ini.equilibrium, :B0))
+
+
+    # HelpPlot test
+    help_plot(ini)
+    help_plot!(ini)
 
 end
