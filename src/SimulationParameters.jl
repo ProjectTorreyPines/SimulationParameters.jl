@@ -9,6 +9,9 @@ import Measurements: ±, Measurement
 import IMASutils: mirror_bound
 import Distributions
 import Dates
+import Serialization
+import Base64
+import HelpPlots
 
 include("parameter.jl")
 
@@ -24,11 +27,15 @@ include("utils.jl")
 
 include("optim.jl")
 
+include("GroupedParameter.jl")
+
 include("show.jl")
 
 include("plot.jl")
 
 include("errors.jl")
+
+include("isequal.jl")
 
 export AbstractParameter, AbstractParameters, AbstractParametersVector
 export Entry, Switch, SwitchOption, ParametersVector, TimeData
@@ -42,6 +49,7 @@ export par2hdf, hdf2par
 export show_modified
 export OptParameter, ↔, opt_parameters, parameters_from_opt!, rand, rand!, float_bounds, nominal_values, opt_labels
 export InexistentParametersFieldException, NotsetParameterException, BadParameterException
+export grouping_parameters
 
 const document = Dict()
 document[Symbol(@__MODULE__)] = [name for name in Base.names(@__MODULE__; all=false, imported=false) if name != Symbol(@__MODULE__)]
