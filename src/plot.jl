@@ -1,6 +1,7 @@
 using RecipesBase
 using Printf
 import Measures
+
 """
     plot_pars(pars::AbstractParameters)
 
@@ -111,7 +112,7 @@ Plot individual time dependent parameter
             primary := false
             marker := :circle
             markerstrokewidth := 0.0
-            title := replace(spath(path(par)[2:end]), "𝚶"=>"O")
+            title := replace(spath(path(par)[2:end]), "𝚶" => "O")
             titlefontsize := 8
             link := :x
             ylabel := "[$(par.units)]"
@@ -201,7 +202,6 @@ end
 end
 
 @recipe function plot_Entry(ety::Entry, multi_values::Vector{<:Real}=[])
-
     if isempty(ety.units) || ety.units == "-"
         unit_name = ""
     else
@@ -322,7 +322,6 @@ end
     end
 end
 
-
 @recipe function plot_OptParameterChoice(opt::OptParameterChoice, Nsamples::Int=1)
     N_choices = length(opt.choices)
 
@@ -357,7 +356,6 @@ end
 end
 
 @recipe function plot_OptParameterChoice_with_counts(opt::OptParameterChoice, counts_vec::Vector{<:Integer})
-
     N_choices = length(opt.choices)
 
     xlims --> (0.5, N_choices + 0.5)
@@ -394,9 +392,7 @@ end
     end
 end
 
-
 @recipe function plot_OptParameterRange(opt::OptParameterRange)
-
     uniform_pdf_val = 1.0 ./ (opt.upper - opt.lower)
 
     xx = [opt.lower, opt.lower, opt.upper, opt.upper]
@@ -423,9 +419,7 @@ end
     end
 end
 
-
 @recipe function plot_OptParameterDistribution(opt::OptParameterDistribution)
-
     lower = Distributions.minimum(opt.dist)
     upper = Distributions.maximum(opt.dist)
 
@@ -478,7 +472,7 @@ function compute_layout(Nlength, nrows, ncols, each_size, plotattributes)
             total_cells = nr * nc
         elseif l isa Tuple && any(x -> x === :, l)
             # Fallback: assume l[1] and l[2] (which may be Colon)
-            if l == (:,:)
+            if l == (:, :)
                 nc = ceil(Int, sqrt(Nlength))
                 nr = ceil(Int, Nlength / nc)
             else
