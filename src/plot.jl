@@ -58,7 +58,7 @@ end
 
 Plot individual time dependent parameter
 """
-@recipe function plot_par(par::AbstractParameter, ::Missing; time0=global_time(par), t_range=time_range(par))
+@recipe function plot_par(par::AbstractParameter; time0=global_time(par), t_range=time_range(par))
     @assert typeof(time0) <: Float64
     @assert typeof(t_range) <: Union{AbstractVector{<:Float64},AbstractRange{<:Float64}} "must specify a `t_range=range(...)` to plot $(spath(par))"
 
@@ -137,6 +137,7 @@ end
 end
 
 @recipe function plot_GroupedParameters(GPs::Vector{GroupedParameter}; nrows=:auto, ncols=:auto, each_size=(500, 400))
+
     name = "Grouped Parameters"
     HelpPlots.assert_type_and_record_argument(name, Tuple{Integer,Integer}, "Size of each subplot. (Default=(500, 400))"; each_size)
     HelpPlots.assert_type_and_record_argument(name, Union{Integer,Symbol}, "Number of rows for subplots' layout (Default = :auto)"; nrows)
@@ -201,110 +202,103 @@ end
 end
 
 @recipe function plot_Entry(ety::Entry, multi_values::Vector{<:Real}=[])
-    @series begin
-        multi_values := multi_values
-        ety, ety.opt
-    end
-end
-
-@recipe function plot_Entry(ety::Entry, opt::OptParameterChoice, multi_values::Vector{<:Real}=[])
-    yguide := "Counts"
-    if isempty(multi_values)
-        N_choices = length(ety.opt.choices)
-        counts_vec = zeros(Int, N_choices)
-        counts_vec[findfirst(opt.choices .== ety.value)] = 1
-    else
-        counts_vec = [count(==(idx), multi_values) for idx in 1:length(opt.choices)]
-    end
-
-    @series begin
-        opt, counts_vec
-    end
-end
-
-@recipe function plot_Entry(ety::Entry, opt::Union{OptParameterRange,OptParameterDistribution}, multi_values::Vector{<:Real}=[])
     if isempty(ety.units) || ety.units == "-"
         unit_name = ""
     else
         unit_name = "[$(ety.units)]"
     end
     title --> spath(ety) * " $unit_name"
+    titlefontsize --> 16
     yguide --> "Probability Density"
 
-    @series begin
-        opt
-    end
+    if ety.opt isa Union{OptParameterRange,OptParameterDistribution}
+        xtickfontsize --> 10
+        ytickfontsize --> 10
+        @series begin
+            ety.opt
+        end
 
-    if isempty(multi_values)
-        x_vals = [ety.value]
-    else
-        x_vals = multi_values
-    end
-
-    if opt isa OptParameterRange
-        y_vals = ones(size(x_vals)) .* [1.0 ./ (opt.upper - opt.lower)]
-        ylims --> (0, 1.5 * maximum(y_vals))
-    elseif opt isa OptParameterDistribution
-        y_vals = Distributions.pdf.(opt.dist, x_vals)
-
-        # Calculate maximum ylim to enusre that graph can show the whole distribution
-        dist = opt.dist
-        lower = Distributions.minimum(dist)
-        upper = Distributions.maximum(dist)
-        lbound = isfinite(lower) ? lower : Distributions.quantile(dist, 0.001)
-        rbound = isfinite(upper) ? upper : Distributions.quantile(dist, 0.999)
-        test_xx = collect(range(lbound, rbound; length=200))
-        test_yy = Distributions.pdf.(dist, test_xx)
-
-        ylims --> (0, 1.3 * maximum(test_yy))
-    end
-
-    if get(plotattributes, :flag_sampled_label, true)
-        if length(multi_values) == 1
-            label_name = "sampled value (≈" * @sprintf("%.3g", ety.value) * ")"
+        if isempty(multi_values)
+            x_vals = [ety.value]
         else
-            label_name = "$(length(x_vals)) samples"
+            x_vals = multi_values
         end
-    end
 
-    if length(x_vals) <= 100
-        @series begin
-            seriestype --> :scatter
-            marker --> :circle
-            markersize --> compute_marker_size(length(multi_values))
-            markeralpha --> compute_marker_alpha(length(multi_values))
-            markercolor --> :blue
-            label --> label_name
-            x_vals, y_vals
+        if ety.opt isa OptParameterRange
+            y_vals = ones(size(x_vals)) .* [1.0 ./ (ety.opt.upper - ety.opt.lower)]
+            ylims --> (0, 1.5 * maximum(y_vals))
+        elseif ety.opt isa OptParameterDistribution
+            y_vals = Distributions.pdf.(ety.opt.dist, x_vals)
+
+            # Calculate maximum ylim to enusre that graph can show the whole distribution
+            dist = ety.opt.dist
+            lower = Distributions.minimum(dist)
+            upper = Distributions.maximum(dist)
+            lbound = isfinite(lower) ? lower : Distributions.quantile(dist, 0.001)
+            rbound = isfinite(upper) ? upper : Distributions.quantile(dist, 0.999)
+            test_xx = collect(range(lbound, rbound; length=200))
+            test_yy = Distributions.pdf.(dist, test_xx)
+
+            ylims --> (0, 1.3 * maximum(test_yy))
         end
-    end
 
-    if length(x_vals) >= 20
-        nbins = min(30, ceil(Int, length(x_vals) / 5))
-        my_bin_edges = range(minimum(x_vals); stop=maximum(x_vals), length=nbins + 1)
+        if get(plotattributes, :flag_sampled_label, true)
+            if length(multi_values) == 1
+                label_name = "sampled value (≈" * @sprintf("%.3g", ety.value) * ")"
+            else
+                label_name = "$(length(x_vals)) samples"
+            end
+        end
+
+        if length(x_vals) <= 100
+            @series begin
+                seriestype --> :scatter
+                marker --> :circle
+                markersize --> compute_marker_size(length(multi_values))
+                markeralpha --> compute_marker_alpha(length(multi_values))
+                markercolor --> :blue
+                label --> label_name
+                x_vals, y_vals
+            end
+        end
+
+        if length(x_vals) >= 20
+
+            nbins = min(30, ceil(Int, length(x_vals) / 5))
+            my_bin_edges = range(minimum(x_vals); stop=maximum(x_vals), length=nbins + 1)
+            @series begin
+                seriestype --> :histogram
+                normalize --> :pdf
+                bins --> my_bin_edges
+                color --> :green
+                alpha --> 0.4
+                label --> label_name
+                label --> ""
+                z_order --> 1
+                ylims := (0, :auto)
+                x_vals
+            end
+        end
+
+    elseif ety.opt isa OptParameterChoice
+        yguide := "Counts"
+        xtickfontsize --> 14
+        ytickfontsize --> 10
+        if isempty(multi_values)
+            N_choices = length(ety.opt.choices)
+            counts_vec = zeros(Int, N_choices)
+            counts_vec[findfirst(ety.opt.choices .== ety.value)] = 1
+        else
+            counts_vec = [count(==(idx), multi_values) for idx in 1:length(ety.opt.choices)]
+        end
+
         @series begin
-            seriestype --> :histogram
-            normalize --> :pdf
-            bins --> my_bin_edges
-            color --> :green
-            alpha --> 0.4
-            label --> label_name
-            label --> ""
-            z_order --> 1
-            ylims := (0, :auto)
-            x_vals
+            ety.opt, counts_vec
         end
     end
 end
 
 @recipe function plot_Switch(sw::Switch, multi_values::Vector{<:Real}=[])
-    @series begin
-        multi_values := multi_values
-        sw, sw.opt
-    end
-end
-
-@recipe function plot_Switch(sw::Switch, opt::OptParameterChoice, multi_values::Vector{<:Real}=[])
     if isempty(sw.units) || sw.units == "-"
         unit_name = ""
     else
@@ -314,15 +308,17 @@ end
     titlefontsize --> 16
     yguide := "Counts"
     if isempty(multi_values)
-        N_choices = length(opt.choices)
+        N_choices = length(sw.opt.choices)
         counts_vec = zeros(Int, N_choices)
-        counts_vec[findfirst(opt.choices .== sw.value)] = 1
+        counts_vec[findfirst(sw.opt.choices .== sw.value)] = 1
     else
-        counts_vec = [count(==(idx), multi_values) for idx in 1:length(opt.choices)]
+        counts_vec = [count(==(idx), multi_values) for idx in 1:length(sw.opt.choices)]
     end
 
+    xtickfontsize --> 14
+    ytickfontsize --> 10
     @series begin
-        opt, counts_vec
+        sw.opt, counts_vec
     end
 end
 
