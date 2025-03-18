@@ -437,10 +437,6 @@ end
     # generate multiple inis
     inis = [rand(ini) for _ in 1:200]
 
-    plot(ini)
-    plot(ini.equilibrium)
-    plot(ini.equilibrium, :R0)
-
     plot(grouping_parameters(inis[1]))
     plot(grouping_parameters(inis[1:10]))
     plot(grouping_parameters(inis[1:50]))
@@ -476,14 +472,9 @@ end
     plot(inis, inis)
     plot(inis, ini)
 
-    # For more coverage
-    plot(getfield(ini.equilibrium, :init_from))
-    plot(getfield(ini.equilibrium, :R0))
-    plot(getfield(ini.equilibrium, :B0))
-
     # HelpPlot test
-    help_plot(ini)
-    help_plot!(ini)
+    help_plot(inis)
+    help_plot!(inis)
 
     # Time dependent plots
     ini = ParametersInits()

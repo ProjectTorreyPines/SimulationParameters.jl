@@ -201,7 +201,7 @@ end
     end
 end
 
-@recipe function plot_Entry(ety::Entry, multi_values::Vector{<:Real}=[])
+@recipe function plot_Entry(ety::Entry, multi_values::Vector{<:Real})
     if isempty(ety.units) || ety.units == "-"
         unit_name = ""
     else
@@ -298,7 +298,7 @@ end
     end
 end
 
-@recipe function plot_Switch(sw::Switch, multi_values::Vector{<:Real}=[])
+@recipe function plot_Switch(sw::Switch, multi_values::Vector{<:Real})
     if isempty(sw.units) || sw.units == "-"
         unit_name = ""
     else
@@ -322,7 +322,7 @@ end
     end
 end
 
-@recipe function plot_OptParameterChoice(opt::OptParameterChoice, Nsamples::Int=1)
+@recipe function plot_OptParameterChoice(opt::OptParameterChoice, Nsamples::Int)
     N_choices = length(opt.choices)
 
     xlims --> (0.5, N_choices + 0.5)
