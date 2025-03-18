@@ -4,6 +4,7 @@ using Test
 using Statistics
 using Plots
 using HelpPlots
+Dist = SimulationParameters.Distributions
 
 abstract type ParametersInit{T} <: AbstractParameters{T} end # container for all parameters of a init
 abstract type ParametersAllInits{T} <: AbstractParameters{T} end # --> abstract type of ParametersInits, container for all parameters of all inits
@@ -73,6 +74,18 @@ end
 
 function ParametersInits(args...; kw...)
     return ParametersInits{Float64}(args...; kw...)
+end
+
+function SimulationParameters.time_range(parameters::ParametersInit)
+    return SimulationParameters.time_range(SimulationParameters.top(parameters))
+end
+
+function SimulationParameters.time_range(parameters::ParametersAllInits)
+    if ismissing(parameters.time, :pulse_shedule_time_basis)
+        return Float64[]
+    else
+        return parameters.time.pulse_shedule_time_basis
+    end
 end
 
 #=============#
@@ -212,7 +225,15 @@ end
     SimulationParameters.rand!(ini.equilibrium, :R0)
 
     # opt_labels
-    @test opt_labels(opts) == ["ini.equilibrium.R0.t1", "ini.equilibrium.R0.t2", "ini.equilibrium.R0.t3", "ini.equilibrium.R0.v1", "ini.equilibrium.R0.v2", "ini.equilibrium.R0.v3", "ini.equilibrium.v_params[1].power"]
+    @test opt_labels(opts) == [
+        "ini.equilibrium.R0.t1",
+        "ini.equilibrium.R0.t2",
+        "ini.equilibrium.R0.t3",
+        "ini.equilibrium.R0.v1",
+        "ini.equilibrium.R0.v2",
+        "ini.equilibrium.R0.v3",
+        "ini.equilibrium.v_params[1].power"
+    ]
 
     #
     @test opt_labels(ini) == opt_labels(opts)
@@ -223,8 +244,7 @@ end
     ini = ParametersInits()
     target_mean = 5.0
     target_std = 1.5
-    Dist = SimulationParameters.Distributions # alias name
-    trunc_Norm_dist = Dist.truncated(Dist.Normal(target_mean, target_std), lower=0.0, upper=10.0)
+    trunc_Norm_dist = Dist.truncated(Dist.Normal(target_mean, target_std); lower=0.0, upper=10.0)
 
     @test_throws AssertionError -1.0 ↔ trunc_Norm_dist
     @test_throws AssertionError 15.0 ↔ trunc_Norm_dist
@@ -241,7 +261,7 @@ end
 @testset "time" begin
     ini = ParametersInits()
 
-    time = range(0,1,11)
+    time = range(0, 1, 11)
     ini.equilibrium.R0 = TimeData(time, time * 2)
 
     ini.time.simulation_start = 1.0
@@ -307,37 +327,35 @@ end
 end
 
 @testset "hdf_save_load" begin
-    Dist = SimulationParameters.Distributions
-
     ini = ParametersInits()
 
     ini.time.simulation_start = 0.0 ↔ (0.0, 1.0, 10.0)
 
     ini.equilibrium.R0 = 5.0 ↔ [1.0, 10.0]
-    ini.equilibrium.Z0 = 0.0 ↔ Dist.truncated(Dist.Normal(0.0, 2.0), lower=0.0)
+    ini.equilibrium.Z0 = 0.0 ↔ Dist.truncated(Dist.Normal(0.0, 2.0); lower=0.0)
 
 
-    dist1 = Dist.truncated(Dist.Normal(2,1.0), lower=1.0, upper=Inf)
-    dist2 = Dist.truncated(Dist.Normal(7.0,1.0), lower=0.5, upper=Inf)
-    mixed_two_dists =  Dist.MixtureModel([dist1, dist2], [0.3, 0.7])
+    dist1 = Dist.truncated(Dist.Normal(2, 1.0); lower=1.0, upper=Inf)
+    dist2 = Dist.truncated(Dist.Normal(7.0, 1.0); lower=0.5, upper=Inf)
+    mixed_two_dists = Dist.MixtureModel([dist1, dist2], [0.3, 0.7])
     ini.equilibrium.B0 = 5.0 ↔ mixed_two_dists
 
     ini.equilibrium.init_from = :ods ↔ (:ods, :scalars, :my_own)
-    ini.equilibrium.dict_option = 2 ↔ (2,3,4)
+    ini.equilibrium.dict_option = 2 ↔ (2, 3, 4)
 
 
     tmp_hdf_filename = tempname() * ".h5"
     par2hdf(ini, tmp_hdf_filename)
 
-    ini2 = hdf2par(tmp_hdf_filename, ParametersInits());
+    ini2 = hdf2par(tmp_hdf_filename, ParametersInits())
 
-    @test isequal(getfield(ini.time,:simulation_start), getfield(ini2.time,:simulation_start); verbose=true)
-    @test isequal(getfield(ini.equilibrium,:R0), getfield(ini2.equilibrium,:R0); verbose=true)
-    @test isequal(getfield(ini.equilibrium,:Z0), getfield(ini2.equilibrium,:Z0); verbose=true)
-    @test isequal(getfield(ini.equilibrium,:B0), getfield(ini2.equilibrium,:B0); verbose=true)
-    @test isequal(getfield(ini.equilibrium,:init_from), getfield(ini2.equilibrium,:init_from); verbose=true)
-    @test isequal(getfield(ini.equilibrium,:dict_option), getfield(ini2.equilibrium,:dict_option); verbose=true)
-    @test getfield(ini.equilibrium,:Z0) == getfield(ini2.equilibrium,:Z0)
+    @test isequal(getfield(ini.time, :simulation_start), getfield(ini2.time, :simulation_start); verbose=true)
+    @test isequal(getfield(ini.equilibrium, :R0), getfield(ini2.equilibrium, :R0); verbose=true)
+    @test isequal(getfield(ini.equilibrium, :Z0), getfield(ini2.equilibrium, :Z0); verbose=true)
+    @test isequal(getfield(ini.equilibrium, :B0), getfield(ini2.equilibrium, :B0); verbose=true)
+    @test isequal(getfield(ini.equilibrium, :init_from), getfield(ini2.equilibrium, :init_from); verbose=true)
+    @test isequal(getfield(ini.equilibrium, :dict_option), getfield(ini2.equilibrium, :dict_option); verbose=true)
+    @test getfield(ini.equilibrium, :Z0) == getfield(ini2.equilibrium, :Z0)
 
     @test diff(ini, ini2) === false
 
@@ -401,14 +419,12 @@ end
     GPs = grouping_parameters([inis[1:3], inis[4:6]])
     GPs = grouping_parameters(ini, inis, ini, inis)
 
-
     inis[1].equilibrium.R0 = 2.0 ↔ (1.0, 2.0)
     @test_throws Exception GPs = grouping_parameters(inis)
 end
 
 @testset "plot_recipes" begin
     ini = ParametersInits()
-    Dist = SimulationParameters.Distributions
     ini.equilibrium.R0 = 5.0 ↔ [1.0, 10.0]
     ini.equilibrium.Z0 = 0.0 ↔ Dist.Normal(0.0, 2.0)
     ini.equilibrium.B0 = 2.0 ↔ (-2.0, +2.0)
@@ -440,9 +456,9 @@ end
     plot(GPs[1:3]; nrows=2)
     plot(GPs[1:3]; ncols=2)
     plot(GPs[1:3]; ncols=2, nrows=2)
-    plot(GPs[1:3]; layout=(3,:))
-    plot(GPs[1:3]; layout=(:,2))
-    plot(GPs[1:3]; layout=(:,:))
+    plot(GPs[1:3]; layout=(3, :))
+    plot(GPs[1:3]; layout=(:, 2))
+    plot(GPs[1:3]; layout=(:, :))
     plot(GPs[1:3]; layout=10)
 
     # keywords test
@@ -465,9 +481,14 @@ end
     plot(getfield(ini.equilibrium, :R0))
     plot(getfield(ini.equilibrium, :B0))
 
-
     # HelpPlot test
     help_plot(ini)
     help_plot!(ini)
 
+    # Time dependent plots
+    ini = ParametersInits()
+    ini.equilibrium.B0 = t -> t
+    ini.time.pulse_shedule_time_basis = range(0, 300; step=1.0)
+    ini.time.simulation_start = 50.0
+    plot(ini)
 end
