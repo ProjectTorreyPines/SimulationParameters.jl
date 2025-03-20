@@ -54,7 +54,9 @@ function AbstractTrees.printnode(io::IO, node_value::ParsNodeRepr)
         M += length("{$(split(string(typeof(par).parameters[1]),".")[end])}")
         printstyled(io, " ➡ ")
         M += 3
-        if typeof(par.value) <: AbstractDict
+        if typeof(par.value) <: TimeData
+            printstyled(io, "TimeData{$(eltype(par.value.data))}[$(length(par.value.data))]"; color=color)
+        elseif typeof(par.value) <: AbstractDict
             tmp = "$(typeof(par.value))("
             for (k, v) in par.value
                 tmp *= "\n$(' '^M)$(repr(k)) => $(repr(v))"
