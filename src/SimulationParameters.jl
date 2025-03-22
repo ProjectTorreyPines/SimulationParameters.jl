@@ -27,7 +27,7 @@ include("utils.jl")
 
 include("optim.jl")
 
-include("GroupedParameter.jl")
+include("grouped.jl")
 
 include("show.jl")
 
