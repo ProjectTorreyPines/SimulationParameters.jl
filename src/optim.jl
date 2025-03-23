@@ -439,7 +439,7 @@ end
 Generates a new random sample within the OptParameter distribution
 """
 function Base.rand(parameters::AbstractParameters, field::Symbol)
-    return rand(getfield(parameters, field))
+    return rand(getparameter(parameters, field))
 end
 
 """
@@ -473,7 +473,7 @@ end
 Generates a new random sample within the OptParameter distribution and updates the parameter value
 """
 function rand!(parameters::AbstractParameters, field::Symbol)
-    return rand!(getfield(parameters, field))
+    return rand!(getparameter(parameters, field))
 end
 
 """
@@ -497,7 +497,7 @@ Pack the optimization parameters contained in a high-level `parameters` Abstract
 """
 function opt_parameters(parameters::AbstractParameters, optimization_vector::Vector{AbstractParameter}=AbstractParameter[])
     for field in keys(parameters)
-        parameter = getfield(parameters, field)
+        parameter = getparameter(parameters, field)
         if typeof(parameter) <: AbstractParameters
             opt_parameters(parameter, optimization_vector)
         elseif typeof(parameter) <: AbstractParametersVector
@@ -523,7 +523,7 @@ end
 
 function parameters_from_opt!(parameters::AbstractParameters, optimization_values::AbstractVector, k::Int; transform::Bool, clip::Bool)
     for field in keys(parameters)
-        parameter = getfield(parameters, field)
+        parameter = getparameter(parameters, field)
         if typeof(parameter) <: AbstractParameters
             _, k = parameters_from_opt!(parameter, optimization_values, k; transform, clip)
         elseif typeof(parameter) <: AbstractParametersVector

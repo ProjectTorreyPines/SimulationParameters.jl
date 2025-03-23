@@ -27,6 +27,8 @@ include("utils.jl")
 
 include("optim.jl")
 
+include("override.jl")
+
 include("grouped.jl")
 
 include("show.jl")
@@ -39,6 +41,7 @@ include("isequal.jl")
 
 export AbstractParameter, AbstractParameters, AbstractParametersVector
 export Entry, Switch, SwitchOption, ParametersVector, TimeData
+export OverrideParameters
 export setup_parameters!, set_new_base!
 export par2dict, par2dict!, dict2par!
 export par2jstr, jstr2par

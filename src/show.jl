@@ -7,7 +7,7 @@ end
 # children #
 ############
 function AbstractTrees.children(pars::AbstractParameters)
-    return (ParsNodeRepr(field, getfield(pars, field)) for field in keys(pars))
+    return (ParsNodeRepr(field, getparameter(pars, field)) for field in keys(pars))
 end
 
 function AbstractTrees.children(pars::AbstractParametersVector)
@@ -19,7 +19,7 @@ function AbstractTrees.children(node_value::ParsNodeRepr)
     if typeof(value) <: AbstractParametersVector
         return (ParsNodeRepr(k, value[k]) for k in eachindex(value))
     elseif typeof(value) <: AbstractParameters
-        return (ParsNodeRepr(field, getfield(value, field)) for field in keys(value))
+        return (ParsNodeRepr(field, getparameter(value, field)) for field in keys(value))
     else
         return []
     end

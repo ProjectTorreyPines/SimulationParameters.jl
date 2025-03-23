@@ -3,7 +3,7 @@ import InteractiveUtils
 using Test
 using Statistics
 using Plots
-using HelpPlots
+using SimulationParameters.HelpPlots
 Dist = SimulationParameters.Distributions
 
 abstract type ParametersInit{T} <: AbstractParameters{T} end # container for all parameters of a init
@@ -482,4 +482,25 @@ end
     ini.time.pulse_shedule_time_basis = range(0, 300; step=1.0)
     ini.time.simulation_start = 50.0
     plot(ini)
+end
+
+@testset "override" begin
+    ini = ParametersInits(; n_ece=2)
+
+    inio = OverrideParameters(ini.equilibrium)
+    @test typeof(inio) <: OverrideParameters{Float64,FUSEparameters__equilibrium{Float64}}
+    @test typeof(inio) <: AbstractParameters
+
+    override = getfield(inio, :_override)
+    original = getfield(inio, :_original)
+
+    @test (inio.R0 = 100.0) == 100.0
+    @test inio.R0 == 100.0
+    @test override.R0 == 100.0
+    @test ismissing(original, :R0)
+
+    @test_throws Exception OverrideParameters(inio)
+
+    inio = OverrideParameters(ini.equilibrium; R0=10.0)
+    @test inio.R0 == 10.0
 end

@@ -2,7 +2,7 @@
 """
     fieldwise_isequal(x, y)
 """
-function fieldwise_isequal(x, y; verbose::Bool=false)
+function fieldwise_isequal(x::T, y::T; verbose::Bool=false) where {T<:Union{<:AbstractParameter,<:OptParameter}}
     if typeof(x) !== typeof(y)
         if verbose
             println("Type difference:")

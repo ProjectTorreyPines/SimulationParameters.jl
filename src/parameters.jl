@@ -1,5 +1,8 @@
 abstract type AbstractParameters{T} end
 
+# ======================== #
+# AbstractParametersVector #
+# ======================== #
 abstract type AbstractParametersVector{T} <: AbstractVector{T} end
 
 Base.@kwdef mutable struct ParametersVector{T<:AbstractParameters} <: AbstractParametersVector{T}
@@ -79,9 +82,40 @@ function Base.setindex!(parameters_vector::AbstractParametersVector, index::Int,
     return setindex!(aop, index, parameters)
 end
 
+function setup_parameters!(parameters::AbstractParametersVector)
+    for (kk, parameter) in enumerate(parameters)
+        if typeof(parameter) <: AbstractParameters
+            setfield!(parameter, :_parent, WeakRef(parameters))
+            setfield!(parameter, :_name, Symbol(kk))
+            setup_parameters!(parameter)
+        else
+            error("$(spath(parameters))[$kk] can only be a subtype of `AbstractParameters`")
+        end
+    end
+end
+
+function set_new_base!(@nospecialize(parameters::AbstractParametersVector))
+    for (kk, parameter) in enumerate(parameters)
+        if typeof(parameter) <: AbstractParameters
+            setfield!(parameter, :_parent, WeakRef(parameters))
+            setfield!(parameter, :_name, Symbol(kk))
+            set_new_base!(parameter)
+        else
+            error("$(spath(parameters))[$kk] can only be a subtype of `AbstractParameters`")
+        end
+    end
+end
+
+# ================== #
+# AbstractParameters #
+# ================== #
+function getparameter(parameters::AbstractParameters, field::Symbol)
+    return getfield(parameters, field)
+end
+
 function setup_parameters!(parameters::AbstractParameters)
     for field in keys(parameters)
-        parameter = getfield(parameters, field)
+        parameter = getparameter(parameters, field)
         if typeof(parameter) <: Union{AbstractParameter,AbstractParameters,AbstractParametersVector}
             setfield!(parameter, :_parent, WeakRef(parameters))
             setfield!(parameter, :_name, field)
@@ -102,21 +136,9 @@ function setup_parameters!(parameters::AbstractParameters)
     end
 end
 
-function setup_parameters!(parameters::AbstractParametersVector)
-    for (kk, parameter) in enumerate(parameters)
-        if typeof(parameter) <: AbstractParameters
-            setfield!(parameter, :_parent, WeakRef(parameters))
-            setfield!(parameter, :_name, Symbol(kk))
-            setup_parameters!(parameter)
-        else
-            error("$(spath(parameters))[$kk] can only be a subtype of `AbstractParameters`")
-        end
-    end
-end
-
 function set_new_base!(@nospecialize(parameters::AbstractParameters))
     for field in keys(parameters)
-        parameter = getfield(parameters, field)
+        parameter = getparameter(parameters, field)
         if typeof(parameter) <: AbstractParameters
             set_new_base!(parameter)
         elseif typeof(parameter) <: AbstractParametersVector
@@ -128,18 +150,6 @@ function set_new_base!(@nospecialize(parameters::AbstractParameters))
     return parameters
 end
 
-function set_new_base!(@nospecialize(parameters::AbstractParametersVector))
-    for (kk, parameter) in enumerate(parameters)
-        if typeof(parameter) <: AbstractParameters
-            setfield!(parameter, :_parent, WeakRef(parameters))
-            setfield!(parameter, :_name, Symbol(kk))
-            set_new_base!(parameter)
-        else
-            error("$(spath(parameters))[$kk] can only be a subtype of `AbstractParameters`")
-        end
-    end
-end
-
 function Base.getproperty(parameters::AbstractParameters, field::Symbol)
     if startswith(string(field), "_")
         error("use getfield for :$field")
@@ -147,7 +157,7 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol)
     if field ∉ keys(parameters)
         throw(InexistentParametersFieldException(parameters, field))
     end
-    parameter = getfield(parameters, field)
+    parameter = getparameter(parameters, field)
     if typeof(parameter) <: AbstractParameters
         return parameter
     elseif typeof(parameter) <: AbstractParametersVector
@@ -205,12 +215,12 @@ function Base.getproperty(parameters::AbstractParameters, field::Symbol, default
     return _getproperty(parameters, field, default)
 end
 
-function Base.getproperty(parameters::SimulationParameters.AbstractParameters, field::Symbol, default::Symbol)
+function Base.getproperty(parameters::AbstractParameters, field::Symbol, default::Symbol)
     return _getproperty(parameters, field, default)
 end
 
 function Base.deepcopy(parameters::T) where {T<:Union{AbstractParameter,AbstractParameters}}
-    parameters1 = Base.deepcopy_internal(parameters, Base.IdDict())::T
+    parameters1 = Base.deepcopy_internal(parameters, Base.IdDict())
     setfield!(parameters1, :_parent, WeakRef(nothing))
     return parameters1
 end
@@ -223,7 +233,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         throw(InexistentParametersFieldException(parameters, field))
     end
 
-    parameter = getfield(parameters, field)
+    parameter = getparameter(parameters, field)
 
     if typeof(parameter) <: AbstractParameter
         if typeof(value) <: OptParameter
@@ -249,7 +259,7 @@ function Base.setproperty!(parameters::AbstractParameters, field::Symbol, value:
         error("AbstractParameters should only hold other `AbstractParameter`, `AbstractParameters`, or `AbstractParametersVector` types, not `$(typeof(parameter))")
     end
 
-    parameter = getfield(parameters, field)
+    parameter = getparameter(parameters, field)
     setfield!(parameter, :_name, field)
     setfield!(parameter, :_parent, WeakRef(parameters))
 
@@ -260,7 +270,11 @@ function Base.keys(parameters::Union{AbstractParameter,AbstractParameters})
     return (field for field in fieldnames(typeof(parameters)) if !startswith(string(field), '_'))
 end
 
-function Base.values(parameters::Union{AbstractParameter,AbstractParameters})
+function Base.values(parameters::AbstractParameters)
+    return (getparameter(parameters, field) for field in fieldnames(typeof(parameters)) if !startswith(string(field), '_'))
+end
+
+function Base.values(parameters::AbstractParameter)
     return (getfield(parameters, field) for field in fieldnames(typeof(parameters)) if !startswith(string(field), '_'))
 end
 
@@ -354,28 +368,20 @@ function leaves!(pars::AbstractParameters, res::Vector{AbstractParameter})
 end
 
 function Base.ismissing(parameters::AbstractParameters, field::Symbol)::Bool
-    return getfield(parameters, field).value === missing
-end
-
-"""
-    (par::AbstractParameters)(kw...)
-
-This functor is used to override the parameters at function call
-"""
-function (par::AbstractParameters)(kw...)
-    par_copy = deepcopy(par)
-    if !isempty(kw)
-        for (key, value) in kw
-            setproperty!(par_copy, key, value)
-        end
-    end
-    setfield!(par_copy, :_parent, getfield(par, :_parent))
-    return par_copy
+    return getparameter(parameters, field).value === missing
 end
 
 # ==== #
 # time #
 # ==== #
+function global_time(pars::AbstractParameters, time0::Float64)
+    return error("`global_time(::$(typeof(pars)))` is not defined")
+end
+
+function global_time(par::AbstractParameter, time0::Float64)
+    return global_time(parent(par))
+end
+
 function global_time(pars::AbstractParameters)
     return error("`global_time(::$(typeof(pars)))` is not defined")
 end

@@ -47,7 +47,7 @@ end
 function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array::Bool=false, show_info::Bool=true, skip_defaults::Bool=false)
     for field in keys(par)
         try
-            parameter = getfield(par, field)
+            parameter = getparameter(par, field)
             p = path(parameter)
             sp = spath(p)
             depth = (count(".", sp) + count("[", sp) - 1) * 2
@@ -129,7 +129,7 @@ function par2ystr(par::AbstractParameters, txt::Vector{String}; is_part_of_array
                 is_part_of_array = false
             end
         catch e
-            println("* $(spath(getfield(par, field)))")
+            println("* $(spath(getparameter(par, field)))")
             rethrow(e)
         end
     end
@@ -263,7 +263,7 @@ Convert AbstractParameters to dictionary
 """
 function par2dict!(par::AbstractParameters, dct::AbstractDict)
     for field in keys(par)
-        parameter = getfield(par, field)
+        parameter = getparameter(par, field)
         if typeof(parameter) <: AbstractParameters
             dct[field] = OrderedCollections.OrderedDict()
             par2dict!(parameter, dct[field])
@@ -295,7 +295,7 @@ Convert dictionary to AbstractParameters
 """
 function dict2par!(dct::AbstractDict, par::AbstractParameters)
     for field in keys(par)
-        parameter = getfield(par, field)
+        parameter = getparameter(par, field)
         if field ∉ keys(dct)
             # this can happen when par is newer than dct
             continue
@@ -354,7 +354,7 @@ function par2hdf!(@nospecialize(par::AbstractParameters), gparent::Union{HDF5.Fi
     attr["concrete_type"] = string(typeof(par))
 
     for field in keys(par)
-        parameter = getfield(par, field)
+        parameter = getparameter(par, field)
         if typeof(parameter) <: Union{AbstractParameters,AbstractParametersVector}
             g = HDF5.create_group(gparent, string(field))
             par2hdf!(parameter, g)
@@ -467,7 +467,7 @@ function hdf2par(gparent::Union{HDF5.File,HDF5.Group}, @nospecialize(par::Abstra
             value = string_decode_value(par, Symbol(field), read(gparent, field))
             setproperty!(par, Symbol(field), value)
 
-            entryObj = getfield(par, Symbol(field))
+            entryObj = getparameter(par, Symbol(field))
             attr = HDF5.attrs(gparent[field])
             if "opt_string" in keys(attr)
                 try
@@ -503,7 +503,7 @@ end
 # ===== #
 
 function string_encode_value(par::AbstractParameters, field::Symbol)
-    parameter = getfield(par, field)
+    parameter = getparameter(par, field)
     tp = typeof(parameter).parameters[1]
     value = getfield(parameter, :value)
     if value === missing
@@ -531,7 +531,7 @@ function string_encode_value(par::AbstractParameters, field::Symbol)
 end
 
 function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
-    parameter = getfield(par, field)
+    parameter = getparameter(par, field)
     tp = typeof(parameter).parameters[1]
 
     if typeof(value) <: String && startswith(value, "\"") && endswith(value, "\"")

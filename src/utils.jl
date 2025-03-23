@@ -13,8 +13,8 @@ function Base.diff(p1::AbstractParameters, p2::AbstractParameters)
         error("p2 has more keys")
     end
     for key in commonkeys
-        v1 = getfield(p1, key)
-        v2 = getfield(p2, key)
+        v1 = getparameter(p1, key)
+        v2 = getparameter(p2, key)
         if typeof(v1) !== typeof(v2)
             error("$key is of different type")
         elseif typeof(v1) <: AbstractParameters
