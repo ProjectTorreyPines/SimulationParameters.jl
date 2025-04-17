@@ -60,8 +60,7 @@ function grouping_parameters(multi_pars::Vector{<:AbstractParameter})
     end
 
     # Build the grouped parameters vector from the dictionaries
-    sorted_keys = sort(collect(keys(values_map)))
-    for key in sorted_keys
+    for key in sort!(collect(keys(values_map)))
         push!(GPs, GroupedParameter(parameter_map[key], values_map[key]))
     end
 

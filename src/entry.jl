@@ -4,7 +4,7 @@ mutable struct TimeData{T}
 end
 
 function (td::TimeData)(time0::Float64)
-    return td.data[argmin(abs.(td.time .- time0))]
+    return td.data[argmin_abs(td.time, time0)]
 end
 
 mutable struct Entry{T} <: AbstractParameter{T}
