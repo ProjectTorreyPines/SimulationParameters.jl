@@ -1,4 +1,3 @@
-
 mutable struct OverrideParameters{T<:Real,D<:AbstractParameters{T}} <: AbstractParameters{T}
     _parent::WeakRef
     _name::Symbol
@@ -18,7 +17,6 @@ function OverrideParameters(original::AbstractParameters; kw...)
     _parent = getfield(original, :_parent)
     _name = getfield(original, :_name)
     override = typeof(original)()
-#    override = deepcopy(original)
     setfield!(override, :_name, _name)
     setfield!(override, :_parent, _parent)
     opar = OverrideParameters(_parent, _name, original, override, Symbol[])
