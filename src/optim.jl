@@ -274,11 +274,11 @@ function (opt::OptParameterChoice)(X::Vector{Float64}; clip::Bool=false, transfo
     lower, upper = float_bounds(opt)
     @assert (lower <= x) && (x <= upper) "OptParameter exceeded bounds"
     if x == lower
-        index = Int(ceil(x))
+        index = round(Int, x, RoundUp)
     elseif x == upper
-        index = Int(floor(x))
+        index = round(Int, x, RoundDown)
     else
-        index = Int(round(x))
+        index = round(Int, x, RoundNearest)
     end
     return opt.choices[index]
 end
