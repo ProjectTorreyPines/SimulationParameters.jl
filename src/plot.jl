@@ -351,7 +351,7 @@ end
         else
             label --> ""
         end
-        nominal_value, Val{:nominal}
+        nominal_value, Val(:nominal)
     end
 end
 
@@ -377,7 +377,7 @@ end
     end
 end
 
-@recipe function plot_nominal_value(value::Real, ::Type{Val{:nominal}})
+@recipe function plot_nominal_value(value::Real, ::Val{:nominal})
     @series begin
         seriestype --> :vline
         if get(plotattributes, :flag_nominal_label, true)
@@ -415,7 +415,7 @@ end
     end
 
     @series begin
-        opt.nominal, Val{:nominal}
+        opt.nominal, Val(:nominal)
     end
 end
 
@@ -449,7 +449,7 @@ end
     end
 
     @series begin
-        opt.nominal, Val{:nominal}
+        opt.nominal, Val(:nominal)
     end
 end
 
