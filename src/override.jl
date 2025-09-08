@@ -44,8 +44,8 @@ function getparameter(opar::OverrideParameters, field::Symbol)
 end
 
 function Base.keys(opar::OverrideParameters)
-    override = getfield(opar, :_override)
-    return keys(override)
+    original = getfield(opar, :_original)
+    return keys(original)
 end
 
 function Base.setproperty!(opar::OverrideParameters, field::Symbol, value)
@@ -66,6 +66,17 @@ function Base.getproperty(opar::OverrideParameters, field::Symbol)
     else
         original = getfield(opar, :_original)
         return getproperty(original, field)
+    end
+end
+
+function Base.getproperty(opar::OverrideParameters, field::Symbol, default)
+    overwritten = getfield(opar, :_overwritten)
+    if field ∈ overwritten
+        override = getfield(opar, :_override)
+        return getproperty(override, field, default)
+    else
+        original = getfield(opar, :_original)
+        return getproperty(original, field, default)
     end
 end
 
