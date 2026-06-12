@@ -313,6 +313,8 @@ end
     @test diff(ini, ini2) === false
 end
 
+include("test_json.jl")
+
 @testset "yaml_save_load" begin
     ini = ParametersInits()
     ini.equilibrium.R0 = 1000.0

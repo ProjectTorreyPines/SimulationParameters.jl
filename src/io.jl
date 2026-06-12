@@ -224,7 +224,8 @@ end
 Loads AbstractParameters from JSON string
 """
 function jstr2par(json_string::String, par::AbstractParameters)
-    data = JSON.parse(json_string; dicttype=OrderedCollections.OrderedDict)
+    # allownan=true: accept NaN/Infinity/-Infinity tokens (v0.21 default; JSON v1 defaults to strict)
+    data = JSON.parse(json_string; dicttype=OrderedCollections.OrderedDict, allownan=true)
     data = replace_colon_strings_to_symbols(data)
     dict2par!(data, par)
     setup_parameters!(par)
@@ -239,7 +240,13 @@ Returns JSON serialization of AbstractParameters
 function par2jstr(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
     data = par2dict(par)
     data = replace_symbols_to_colon_strings(data)
-    return JSON.json(data, indent; kw...)
+    @static if pkgversion(JSON) < v"1"
+        return JSON.json(data, indent; kw...) # writes non-finite floats as `null`
+    else
+        # the `json(data, indent)` compat method drops kwargs; allownan=true writes
+        # non-finite floats as NaN/Infinity/-Infinity tokens (v1 throws on them by default)
+        return JSON.json(data; pretty=indent, allownan=true, kw...)
+    end
 end
 
 # ==== #
