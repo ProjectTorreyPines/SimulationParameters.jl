@@ -576,7 +576,9 @@ function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
             if tp <: AbstractArray{Symbol} && typeof(value) <: AbstractArray{String}
                 value = Symbol.([(startswith(x, ":") ? x[2:end] : x) for x in value ])
             else
-                value = etp.(value)
+                # `convert`, not `etp(x)`: `Any(x)` has no constructor (untyped Vector → eltype Any),
+                # while convert still coerces Float64 back to declared element types.
+                value = convert.(etp, value)
             end
         else
             value = Vector{etp}()
@@ -589,9 +591,13 @@ function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
         value = tuple(map((x, target_type) -> convert(target_type, eval(x)), expr.args, tp.parameters)...)
     elseif tp <: Bool && typeof(value) <: Int
         value = Bool(value)
-    elseif tp <: Integer && typeof(value) <: AbstractFloat
-        # JSON v1 with allownan=true parses all numbers as Float64 (JuliaIO/JSON.jl#397)
-        value = tp(value)
+    elseif typeof(value) <: Real
+        # JSON v1 allownan parses every number as Float64 (JuliaIO/JSON.jl#397); coerce back to the
+        # declared scalar Real type — `tp` itself, or the lone Real member of a Union (e.g. Union{Int,Vector}).
+        real_targets = filter(t -> t <: Real, collect(Base.uniontypes(tp)))
+        if length(real_targets) == 1 && !(typeof(value) <: only(real_targets))
+            value = convert(only(real_targets), value)
+        end
     end
     return value
 end

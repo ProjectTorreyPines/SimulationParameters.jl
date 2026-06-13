@@ -19,6 +19,10 @@ Base.@kwdef mutable struct JSONTestParameters__phys{T<:Real} <: AbstractParamete
     mixed_vector::Entry{Vector{Float64}} = Entry{Vector{Float64}}("-", "vector with non-finite elements")
     int_scalar::Entry{Int} = Entry{Int}("-", "integer scalar")
     int_vector::Entry{Vector{Int}} = Entry{Vector{Int}}("-", "integer vector")
+    f32_scalar::Entry{Float32} = Entry{Float32}("-", "Float32 scalar (narrower than JSON's Float64)")
+    f32_vector::Entry{Vector{Float32}} = Entry{Vector{Float32}}("-", "Float32 vector")
+    union_scalar::Entry{Union{Int64,Vector}} = Entry{Union{Int64,Vector}}("-", "Int-or-Vector (cf. act.ActorCoreRadHeatFlux.levels)")
+    union_vector::Entry{Union{Int64,Vector}} = Entry{Union{Int64,Vector}}("-", "Int-or-Vector holding a vector")
 end
 
 mutable struct JSONTestParameters{T<:Real} <: AbstractParameters{T}
@@ -47,7 +51,10 @@ end
                 "finite_scalar": 1.5,
                 "mixed_vector": [1.0, NaN, Infinity, -Infinity, 2.5],
                 "int_scalar": 101,
-                "int_vector": [1, 2, 3]
+                "int_vector": [1, 2, 3],
+                "f32_scalar": 1.25,
+                "f32_vector": [1.25, 2.5],
+                "union_scalar": 20
             }
         }
         """
@@ -61,6 +68,13 @@ end
         # integer parameters must still decode to their declared type
         @test par.phys.int_scalar === 101
         @test par.phys.int_vector == [1, 2, 3] && par.phys.int_vector isa Vector{Int}
+        # more generally, ANY Real field narrower than JSON's Float64 (e.g. Float32) must
+        # decode to its declared type, not just Integer
+        @test par.phys.f32_scalar === 1.25f0
+        @test par.phys.f32_vector == Float32[1.25, 2.5] && par.phys.f32_vector isa Vector{Float32}
+        # Union eltype: a scalar Int written for an Int-or-Vector field must decode to Int64,
+        # not Float64 (reproduces FUSE act.ActorCoreRadHeatFlux.levels::Union{Int64, Vector})
+        @test par.phys.union_scalar === 20
     end
 
     @testset "write non-finite values" begin
@@ -72,6 +86,8 @@ end
         par.phys.mixed_vector = [1.0, NaN, Inf, -Inf, 2.5]
         par.phys.int_scalar = 101
         par.phys.int_vector = [1, 2, 3]
+        par.phys.f32_scalar = 1.25f0
+        par.phys.f32_vector = Float32[1.25, 2.5]
 
         # must not throw on either JSON version
         json_string = par2jstr(par)
@@ -89,6 +105,8 @@ end
             @test isequal(par2.phys.mixed_vector, [1.0, NaN, Inf, -Inf, 2.5])
             @test par2.phys.int_scalar === 101
             @test par2.phys.int_vector == [1, 2, 3] && par2.phys.int_vector isa Vector{Int}
+            @test par2.phys.f32_scalar === 1.25f0
+            @test par2.phys.f32_vector == Float32[1.25, 2.5] && par2.phys.f32_vector isa Vector{Float32}
         else
             # v0.21 writes non-finite floats as null; on load a null scalar is skipped (stays missing)
             @test contains(json_string, "null")
@@ -120,5 +138,36 @@ end
         finally
             isfile(filename) && rm(filename)
         end
+    end
+
+    @testset "full-tree JSON roundtrip (FUSE ini_json/act_json pattern)" begin
+        # Mirrors FUSE's test_ini_act_save_load act_json/ini_json:
+        #     str  = SimulationParameters.par2jstr(par)
+        #     par2 = SimulationParameters.jstr2par(str, fresh())
+        # Populating a tree with the types that broke FUSE lets SimulationParameters catch the
+        # JSON-v1 Float64-flattening regressions (Int, Float32, Union{Int,Vector}) in its own
+        # ~1-minute test suite, instead of only in FUSE's hours-long CI.
+        par = JSONTestParameters()
+        par.phys.finite_scalar = 1.5
+        par.phys.int_scalar = 101
+        par.phys.int_vector = [1, 2, 3]
+        par.phys.f32_scalar = 1.25f0
+        par.phys.f32_vector = Float32[1.25, 2.5]
+        par.phys.union_scalar = 20            # Int side of Union{Int64, Vector}
+        par.phys.union_vector = [4, 5, 6]     # Vector side of the same field
+        if JSON_IS_V1
+            par.phys.nan_scalar = NaN
+            par.phys.mixed_vector = [1.0, NaN, Inf, -Inf, 2.5]
+        end
+
+        # the round-trip must not throw, and must preserve each declared type
+        par2 = jstr2par(par2jstr(par), JSONTestParameters())
+        @test par2.phys.finite_scalar === 1.5
+        @test par2.phys.int_scalar === 101
+        @test par2.phys.int_vector == [1, 2, 3] && par2.phys.int_vector isa Vector{Int}
+        @test par2.phys.f32_scalar === 1.25f0
+        @test par2.phys.f32_vector == Float32[1.25, 2.5] && par2.phys.f32_vector isa Vector{Float32}
+        @test par2.phys.union_scalar === 20
+        @test par2.phys.union_vector == [4, 5, 6] && par2.phys.union_vector isa Vector
     end
 end
