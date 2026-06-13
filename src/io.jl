@@ -589,6 +589,9 @@ function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
         value = tuple(map((x, target_type) -> convert(target_type, eval(x)), expr.args, tp.parameters)...)
     elseif tp <: Bool && typeof(value) <: Int
         value = Bool(value)
+    elseif tp <: Integer && typeof(value) <: AbstractFloat
+        # JSON v1 with allownan=true parses all numbers as Float64 (JuliaIO/JSON.jl#397)
+        value = tp(value)
     end
     return value
 end

@@ -17,6 +17,8 @@ Base.@kwdef mutable struct JSONTestParameters__phys{T<:Real} <: AbstractParamete
     ninf_scalar::Entry{T} = Entry{T}("-", "scalar holding -Inf")
     finite_scalar::Entry{T} = Entry{T}("-", "scalar holding a finite value")
     mixed_vector::Entry{Vector{Float64}} = Entry{Vector{Float64}}("-", "vector with non-finite elements")
+    int_scalar::Entry{Int} = Entry{Int}("-", "integer scalar")
+    int_vector::Entry{Vector{Int}} = Entry{Vector{Int}}("-", "integer vector")
 end
 
 mutable struct JSONTestParameters{T<:Real} <: AbstractParameters{T}
@@ -43,7 +45,9 @@ end
                 "inf_scalar": Infinity,
                 "ninf_scalar": -Infinity,
                 "finite_scalar": 1.5,
-                "mixed_vector": [1.0, NaN, Infinity, -Infinity, 2.5]
+                "mixed_vector": [1.0, NaN, Infinity, -Infinity, 2.5],
+                "int_scalar": 101,
+                "int_vector": [1, 2, 3]
             }
         }
         """
@@ -53,6 +57,10 @@ end
         @test par.phys.ninf_scalar == -Inf
         @test par.phys.finite_scalar == 1.5
         @test isequal(par.phys.mixed_vector, [1.0, NaN, Inf, -Inf, 2.5])
+        # JSON v1 with allownan=true parses all numbers as Float64 (JuliaIO/JSON.jl#397):
+        # integer parameters must still decode to their declared type
+        @test par.phys.int_scalar === 101
+        @test par.phys.int_vector == [1, 2, 3] && par.phys.int_vector isa Vector{Int}
     end
 
     @testset "write non-finite values" begin
@@ -62,6 +70,8 @@ end
         par.phys.ninf_scalar = -Inf
         par.phys.finite_scalar = 1.5
         par.phys.mixed_vector = [1.0, NaN, Inf, -Inf, 2.5]
+        par.phys.int_scalar = 101
+        par.phys.int_vector = [1, 2, 3]
 
         # must not throw on either JSON version
         json_string = par2jstr(par)
@@ -77,15 +87,19 @@ end
             @test par2.phys.ninf_scalar == -Inf
             @test par2.phys.finite_scalar == 1.5
             @test isequal(par2.phys.mixed_vector, [1.0, NaN, Inf, -Inf, 2.5])
+            @test par2.phys.int_scalar === 101
+            @test par2.phys.int_vector == [1, 2, 3] && par2.phys.int_vector isa Vector{Int}
         else
             # v0.21 writes non-finite floats as null; on load a null scalar is skipped (stays missing)
             @test contains(json_string, "null")
             par_scalar = JSONTestParameters()
             par_scalar.phys.nan_scalar = NaN
             par_scalar.phys.finite_scalar = 1.5
+            par_scalar.phys.int_scalar = 101
             par2 = jstr2par(par2jstr(par_scalar), JSONTestParameters())
             @test ismissing(par2.phys, :nan_scalar)
             @test par2.phys.finite_scalar == 1.5
+            @test par2.phys.int_scalar === 101
         end
     end
 
