@@ -224,7 +224,8 @@ end
 Loads AbstractParameters from JSON string
 """
 function jstr2par(json_string::String, par::AbstractParameters)
-    data = JSON.parse(json_string; dicttype=OrderedCollections.OrderedDict)
+    # allownan=true: accept NaN/Infinity/-Infinity tokens (v0.21 default; JSON v1 defaults to strict)
+    data = JSON.parse(json_string; dicttype=OrderedCollections.OrderedDict, allownan=true)
     data = replace_colon_strings_to_symbols(data)
     dict2par!(data, par)
     setup_parameters!(par)
@@ -239,7 +240,13 @@ Returns JSON serialization of AbstractParameters
 function par2jstr(@nospecialize(par::AbstractParameters); indent::Int=1, kw...)
     data = par2dict(par)
     data = replace_symbols_to_colon_strings(data)
-    return JSON.json(data, indent; kw...)
+    @static if pkgversion(JSON) < v"1"
+        return JSON.json(data, indent; kw...) # writes non-finite floats as `null`
+    else
+        # the `json(data, indent)` compat method drops kwargs; allownan=true writes
+        # non-finite floats as NaN/Infinity/-Infinity tokens (v1 throws on them by default)
+        return JSON.json(data; pretty=indent, allownan=true, kw...)
+    end
 end
 
 # ==== #
@@ -569,7 +576,9 @@ function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
             if tp <: AbstractArray{Symbol} && typeof(value) <: AbstractArray{String}
                 value = Symbol.([(startswith(x, ":") ? x[2:end] : x) for x in value ])
             else
-                value = etp.(value)
+                # `convert`, not `etp(x)`: `Any(x)` has no constructor (untyped Vector → eltype Any),
+                # while convert still coerces Float64 back to declared element types.
+                value = convert.(etp, value)
             end
         else
             value = Vector{etp}()
@@ -582,6 +591,13 @@ function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
         value = tuple(map((x, target_type) -> convert(target_type, eval(x)), expr.args, tp.parameters)...)
     elseif tp <: Bool && typeof(value) <: Int
         value = Bool(value)
+    elseif typeof(value) <: Real
+        # JSON v1 allownan parses every number as Float64 (JuliaIO/JSON.jl#397); coerce back to the
+        # declared scalar Real type — `tp` itself, or the lone Real member of a Union (e.g. Union{Int,Vector}).
+        real_targets = filter(t -> t <: Real, collect(Base.uniontypes(tp)))
+        if length(real_targets) == 1 && !(typeof(value) <: only(real_targets))
+            value = convert(only(real_targets), value)
+        end
     end
     return value
 end
