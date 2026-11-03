@@ -41,7 +41,7 @@ function Base.diff(p1::AbstractParametersVector, p2::AbstractParametersVector)
     end
     for key in commonkeys
         v1 = p1[key]
-        v2 = p1[key]
+        v2 = p2[key]
         if typeof(v1) !== typeof(v2)
             error("$key is of different type")
         elseif typeof(v1) <: AbstractParameters

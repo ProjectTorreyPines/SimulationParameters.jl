@@ -13,15 +13,8 @@ function par2ystr(par::AbstractParametersVector, txt::Vector{String}; show_info:
     end
 end
 
-function equals_with_missing(a, b)
-    if ismissing(a) && ismissing(b)
-        return true
-    elseif ismissing(a) || ismissing(b)
-        return false
-    else
-        return a == b
-    end
-end
+# isequal treats missing==missing and NaN==NaN as true, unlike ==
+equals_with_missing(a, b) = isequal(a, b)
 
 function YAML._print(io::IO, value::Missing, level::Int=0, ignore_level::Bool=false)
     return println(io, "~")
