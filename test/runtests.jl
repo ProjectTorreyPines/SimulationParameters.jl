@@ -76,6 +76,29 @@ function ParametersInits(args...; kw...)
     return ParametersInits{Float64}(args...; kw...)
 end
 
+const Measurement = SimulationParameters.Measurement
+const ± = SimulationParameters.:±
+
+mutable struct ParametersMeasurementUnion{T<:Real} <: ParametersAllInits{T}
+    _parent::WeakRef
+    _name::Symbol
+    plain::Entry{Measurement{Float64}}
+    either::Entry{Union{Symbol,Measurement{Float64}}}
+end
+
+function ParametersMeasurementUnion{T}() where {T<:Real}
+    par = ParametersMeasurementUnion{T}(
+        WeakRef(nothing),
+        :ini,
+        Entry{Measurement{Float64}}("-", "a measurement"; default=1.0 ± 0.1),
+        Entry{Union{Symbol,Measurement{Float64}}}("-", "a measurement or a symbol flag"; default=0.0 ± 0.0)
+    )
+    setup_parameters!(par)
+    return par
+end
+
+ParametersMeasurementUnion() = ParametersMeasurementUnion{Float64}()
+
 function SimulationParameters.time_range(parameters::ParametersInit)
     return SimulationParameters.time_range(SimulationParameters.top(parameters))
 end
@@ -377,6 +400,28 @@ end
     @test any([ori_init_from != rand(ini2).equilibrium.init_from for _ in 1:N])
 
     isfile(tmp_hdf_filename) && rm(tmp_hdf_filename)
+end
+
+@testset "measurement_in_union_save_load" begin
+    # An Entry may declare a Union holding a Measurement, so that it takes
+    # either a value or a Symbol flag. Encoding must follow the runtime value:
+    # a raw Measurement handed to HDF5 overflows the stack.
+    for value in (2.0 ± 0.2, :flag)
+        par = ParametersMeasurementUnion()
+        par.either = value
+
+        tmp_hdf_filename = tempname() * ".h5"
+        par2hdf(par, tmp_hdf_filename)
+        par2 = hdf2par(tmp_hdf_filename, ParametersMeasurementUnion())
+        rm(tmp_hdf_filename)
+        @test par2.either == value
+        @test typeof(par2.either) == typeof(value)
+        @test par2.plain == par.plain
+
+        par3 = jstr2par(par2jstr(par), ParametersMeasurementUnion())
+        @test par3.either == value
+        @test typeof(par3.either) == typeof(value)
+    end
 end
 
 @testset "checks" begin
