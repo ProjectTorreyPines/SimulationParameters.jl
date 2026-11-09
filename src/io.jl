@@ -523,7 +523,7 @@ function string_encode_value(par::AbstractParameters, field::Symbol)
         return [":$val" for val in value]
     elseif tp <: Tuple
         return collect(value)
-    elseif tp <: Measurement
+    elseif tp <: Measurement || typeof(value) <: Measurement
         return "$value"
     else
         return value
@@ -544,7 +544,7 @@ function string_decode_value(par::AbstractParameters, field::Symbol, value::Any)
         value = Symbol(value[2:end])
     elseif tp <: Enum && typeof(value) <: Int
         value = Symbol(string(tp(value))[2:end-1])
-    elseif tp <: Measurement && typeof(value) <: AbstractString
+    elseif any(t -> t <: Measurement, Base.uniontypes(tp)) && typeof(value) <: AbstractString && occursin("±", value)
         v, e = split(value, "±")
         value = parse(Float64, v) ± parse(Float64, e)
     elseif tp <: AbstractRange || (tp <: AbstractVector && typeof(value) <: String && contains(value, ":"))
